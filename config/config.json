@@ -1,0 +1,101 @@
+{
+  "camera": {
+    "index": 0,
+    "resolution": {
+      "width": 1280,
+      "height": 720
+    },
+    "fps": 30,
+    "picamera": {
+      "exposure": {
+        "mode": "auto", 
+        "manual_exposure_us": 10000, 
+        "manual_analogue_gain": 1.0
+      },
+      "awb": {
+        "mode": "auto"
+      }
+    }
+  },
+  "photo": {
+    "save_full_frame": true,
+    "crop_padding": 40,
+    "extra_top": 30,
+    "preview_draw_crop_box": true,
+    "jpeg_quality": 95,
+    "use_high_res_still": true,
+    "still_resolution": { "width": 1640, "height": 1232 },
+    "still_settle_ms": 700
+  },
+  "image_processing": {
+    "prefer_isp_color": true,
+    "denoise_enabled": true,
+    "denoise_h": 10,
+    "denoise_hColor": 10,
+    "denoise_templateWindowSize": 7,
+    "denoise_searchWindowSize": 21,
+    "awb_grayworld_enabled": false,
+    "clahe_enabled": false,
+    "clahe_clip_limit": 2.0,
+    "clahe_tile_grid": 8,
+    "sharpen_enabled": false,
+    "sharpen_amount": 0.4,
+    "sharpen_sigma": 0.9,
+    "neutral_balance_enabled": false,
+    "neutral_balance_strength": 0.4
+  },
+  "logging": {
+    "level": "INFO",
+    "log_dir": "logs"
+  },
+  "cloud": {
+    "enabled": true,
+    "provider": "supabase",
+    "url": "https://ufckpgswkziojwoqosxw.supabase.co",
+    "api_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmY2twZ3N3a3ppb2p3b3Fvc3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MzU3MjQsImV4cCI6MjA3OTExMTcyNH0.H7UsTtI8RuqtSqqTXtKBvkG7bdyGao42YyXo_j9wsLk",
+    "device_id": "device_001",
+    "sync_interval": 60,
+    "sync_on_capture": true,
+    "offline_queue_size": 1000,
+    "retry_attempts": 3,
+    "retry_delay": 30
+  },
+  "lighting": {
+    "enabled": true,
+    "adaptive_exposure": false,
+    "brightness_threshold": 80,
+    "contrast_threshold": 40,
+    "auto_brightness_adjust": false,
+    "histogram_equalization": false,
+    "low_light_mode": "off"
+  },
+  "buzzer": {
+    "enabled": true,
+    "gpio_pin": 17,
+    "qr_detected_pattern": [100, 50, 100],
+    "face_detected_pattern": [50],
+    "success_pattern": [200, 100, 200, 100, 200],
+    "error_pattern": [1000],
+    "duplicate_pattern": [100, 100, 100, 100, 100]
+  },
+  "offline_mode": {
+    "enabled": true,
+    "queue_limit": 1000,
+    "auto_sync_when_online": true,
+    "check_connection_interval": 30,
+    "fallback_mode": "local_only",
+    "timeout": 5,
+    "test_url": "https://www.google.com"
+  },
+  "sms_notifications": {
+    "enabled": true,
+    "username": "EWW3VZ",
+    "password": "ri9-rbprxdf2ph",
+    "device_id": "zmmfTkL3NacdGAfNqwD7q",
+    "api_url": "https://api.sms-gate.app/3rdparty/v1/message",
+    "message_template": "Good day! This is to inform you that {student_name} (ID: {student_id}) has successfully checked in at {time} on {date}. Thank you and have a great day!",
+    "send_on_capture": true,
+    "retry_on_failure": true,
+    "retry_attempts": 3
+  }
+}
