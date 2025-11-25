@@ -13,6 +13,36 @@ import base64
 logger = logging.getLogger(__name__)
 
 
+def format_phone_number(phone: str) -> str:
+    """
+    Format phone number to international format (+63)
+    
+    Args:
+        phone: Phone number in various formats (09xx, 639xx, +639xx)
+    
+    Returns:
+        Phone number in +63 format
+    """
+    # Remove spaces, dashes, parentheses
+    phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+    
+    # Convert 09xx to +639xx
+    if phone.startswith('09'):
+        return '+63' + phone[1:]
+    
+    # Convert 639xx to +639xx
+    if phone.startswith('63') and not phone.startswith('+63'):
+        return '+' + phone
+    
+    # Already in +63 format
+    if phone.startswith('+63'):
+        return phone
+    
+    # Unknown format, return as-is
+    logger.warning(f"Unknown phone format: {phone}")
+    return phone
+
+
 class SMSNotifier:
     """
     SMS notification service using Android SMS Gateway
@@ -117,21 +147,29 @@ class SMSNotifier:
             return False
         
         try:
-            # Prepare request payload
+            # Format phone number to international format
+            formatted_phone = format_phone_number(phone_number)
+            logger.debug(f"Phone formatted: {phone_number} → {formatted_phone}")
+            
+            # Prepare request payload (SMS-Gate API format)
             payload = {
-                "textMessage": {
-                    "text": message
-                },
-                "phoneNumbers": [phone_number],
-                "deviceId": self.device_id
+                "phoneNumbers": [formatted_phone],
+                "message": message
             }
+            
+            # Create Basic Auth header
+            credentials = f"{self.username}:{self.password}"
+            b64_credentials = base64.b64encode(credentials.encode()).decode()
+            
+            # Build URL with device ID
+            url = f"{self.api_url}?deviceId={self.device_id}"
             
             # Make API request with Basic Auth
             response = requests.post(
-                self.api_url,
+                url,
                 json=payload,
-                auth=(self.username, self.password),
                 headers={
+                    'Authorization': f'Basic {b64_credentials}',
                     'Content-Type': 'application/json'
                 },
                 timeout=10

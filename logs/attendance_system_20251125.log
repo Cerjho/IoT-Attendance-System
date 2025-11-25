@@ -148,3 +148,143 @@ Failed Tests:
 2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 9
 2025-11-25 20:12:22 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
 2025-11-25 20:12:22 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_201642.txt
+2025-11-25 20:16:42 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 10
+2025-11-25 20:16:42 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:16:42 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Maria Santos | Grade 11 - STEM-A
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021002_20251125_201643.txt
+2025-11-25 20:16:43 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 11
+2025-11-25 20:16:43 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:16:43 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Pedro Reyes | Grade 12 - ABM-B
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021003_20251125_201644.txt
+2025-11-25 20:16:44 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 12
+2025-11-25 20:16:44 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:16:44 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_202006.txt
+2025-11-25 20:20:06 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 13
+2025-11-25 20:20:06 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:20:06 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Maria Santos | Grade 11 - STEM-A
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021002_20251125_202007.txt
+2025-11-25 20:20:07 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 14
+2025-11-25 20:20:07 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:20:07 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Pedro Reyes | Grade 12 - ABM-B
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021003_20251125_202008.txt
+2025-11-25 20:20:08 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 15
+2025-11-25 20:20:08 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:20:08 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_202225.txt
+2025-11-25 20:22:25 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 16
+2025-11-25 20:22:25 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:22:25 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Maria Santos | Grade 11 - STEM-A
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021002_20251125_202226.txt
+2025-11-25 20:22:26 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 17
+2025-11-25 20:22:26 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:22:26 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Pedro Reyes | Grade 12 - ABM-B
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021003_20251125_202227.txt
+2025-11-25 20:22:27 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 18
+2025-11-25 20:22:27 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:22:27 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_202452.txt
+2025-11-25 20:24:52 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 19
+2025-11-25 20:24:52 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:24:52 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Maria Santos | Grade 11 - STEM-A
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021002_20251125_202453.txt
+2025-11-25 20:24:53 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 20
+2025-11-25 20:24:53 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:24:53 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Pedro Reyes | Grade 12 - ABM-B
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021003_20251125_202454.txt
+2025-11-25 20:24:54 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 21
+2025-11-25 20:24:54 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:24:54 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_202608.txt
+2025-11-25 20:26:08 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 22
+2025-11-25 20:26:08 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:26:09 - simple_flow_test - INFO - [test_simple_flow.py:155] - ✅ SMS sent to +639480205567
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Maria Santos | Grade 11 - STEM-A
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021002_20251125_202610.txt
+2025-11-25 20:26:10 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 23
+2025-11-25 20:26:10 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:26:11 - simple_flow_test - INFO - [test_simple_flow.py:155] - ✅ SMS sent to +639923783237
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Pedro Reyes | Grade 12 - ABM-B
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021003_20251125_202612.txt
+2025-11-25 20:26:12 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 24
+2025-11-25 20:26:12 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:26:13 - simple_flow_test - INFO - [test_simple_flow.py:155] - ✅ SMS sent to +639480205567

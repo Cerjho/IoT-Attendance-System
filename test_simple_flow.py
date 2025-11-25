@@ -49,21 +49,21 @@ test_students = [
         'name': 'Juan Dela Cruz',
         'grade': 'Grade 11',
         'section': 'STEM-A',
-        'parent_contact': '09480205567'
+        'parent_contact': '+639480205567'
     },
     {
         'student_number': '2021002',
         'name': 'Maria Santos',
         'grade': 'Grade 11',
         'section': 'STEM-A',
-        'parent_contact': '09923783237'
+        'parent_contact': '+639923783237'
     },
     {
         'student_number': '2021003',
         'name': 'Pedro Reyes',
         'grade': 'Grade 12',
         'section': 'ABM-B',
-        'parent_contact': '09480205567'
+        'parent_contact': '+639480205567'
     }
 ]
 

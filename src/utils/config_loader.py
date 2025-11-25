@@ -58,6 +58,7 @@ class ConfigLoader:
             'SUPABASE_URL': ('cloud', 'url'),
             'SUPABASE_KEY': ('cloud', 'api_key'),
             'DEVICE_ID': ('cloud', 'device_id'),
+            'SMS_ENABLED': ('sms_notifications', 'enabled'),
             'SMS_USERNAME': ('sms_notifications', 'username'),
             'SMS_PASSWORD': ('sms_notifications', 'password'),
             'SMS_DEVICE_ID': ('sms_notifications', 'device_id'),
