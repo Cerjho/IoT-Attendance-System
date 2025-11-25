@@ -47,6 +47,7 @@ from src.network import ConnectivityMonitor
 from src.cloud import CloudSyncManager
 from src.notifications import SMSNotifier
 from src.attendance.schedule_manager import ScheduleManager
+from src.sync.roster_sync import RosterSyncManager
 import threading
 
 logger = logging.getLogger(__name__)
