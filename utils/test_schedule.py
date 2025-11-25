@@ -74,30 +74,31 @@ def test_schedule():
     
     # Scenario 1: First scan of the day
     current_time = datetime.strptime("2025-11-25 07:00", "%Y-%m-%d %H:%M")
-    allow, reason = manager.should_allow_scan("2024-0001", None, current_time)
+    allow = manager.should_allow_scan("2024-0001", None, None, 'time_in', current_time)
     print(f"\nScenario 1: First scan at 7:00 AM")
-    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} - {reason}")
+    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} (first scan of day)")
     
     # Scenario 2: Duplicate scan (too soon)
-    last_scan = datetime.strptime("2025-11-25 07:00", "%Y-%m-%d %H:%M")
+    last_scan_time = "2025-11-25T07:00:00"
     current_time = datetime.strptime("2025-11-25 07:02", "%Y-%m-%d %H:%M")
-    allow, reason = manager.should_allow_scan("2024-0001", last_scan, current_time)
-    print(f"\nScenario 2: Duplicate scan 2 minutes later")
-    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} - {reason}")
+    allow = manager.should_allow_scan("2024-0001", last_scan_time, 'time_in', 'time_in', current_time)
+    print(f"\nScenario 2: Duplicate login 2 minutes later")
+    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} (within cooldown, same type)")
     
-    # Scenario 3: Logout scan (same session)
-    last_scan = datetime.strptime("2025-11-25 07:00", "%Y-%m-%d %H:%M")
+    # Scenario 3: Logout scan (same session, different type)
+    last_scan_time = "2025-11-25T07:00:00"
     current_time = datetime.strptime("2025-11-25 11:45", "%Y-%m-%d %H:%M")
-    allow, reason = manager.should_allow_scan("2024-0001", last_scan, current_time)
+    allow = manager.should_allow_scan("2024-0001", last_scan_time, 'time_in', 'time_out', current_time)
     print(f"\nScenario 3: Logout scan at 11:45 AM (after login at 7:00 AM)")
-    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} - {reason}")
+    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} (different type: logout after login)")
     
     # Scenario 4: Afternoon session scan
-    last_scan = datetime.strptime("2025-11-25 07:00", "%Y-%m-%d %H:%M")
+    last_scan_time = "2025-11-25T11:45:00"
     current_time = datetime.strptime("2025-11-25 13:00", "%Y-%m-%d %H:%M")
-    allow, reason = manager.should_allow_scan("2024-0001", last_scan, current_time)
-    print(f"\nScenario 4: Afternoon login at 1:00 PM (after morning session)")
-    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} - {reason}")
+    allow = manager.should_allow_scan("2024-0001", last_scan_time, 'time_out', 'time_in', current_time)
+    print(f"\nScenario 4: Afternoon login at 1:00 PM (after morning logout)")
+    print(f"   Allow: {'✅ YES' if allow else '❌ NO'} (different session)")
+
     
     print("\n" + "=" * 70)
     print("✅ SCHEDULE MANAGER TEST COMPLETE")

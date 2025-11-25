@@ -278,45 +278,47 @@ class ScheduleManager:
     def should_allow_scan(
         self,
         student_id: str,
-        last_scan_time: Optional[datetime],
+        last_scan_time: Optional[str],
+        last_scan_type: Optional[str] = None,
+        current_scan_type: Optional[str] = None,
         current_time: datetime = None
-    ) -> Tuple[bool, str]:
+    ) -> bool:
         """
         Check if student scan should be allowed
         
         Args:
             student_id: Student ID
-            last_scan_time: Time of last scan (None if first scan today)
+            last_scan_time: Timestamp of last scan (ISO format string or None if first scan today)
+            last_scan_type: Type of last scan ('time_in' or 'time_out')
+            current_scan_type: Type of current scan ('time_in' or 'time_out')
             current_time: Current time (default: now)
             
         Returns:
-            Tuple of (allow: bool, reason: str)
+            bool: True if scan allowed, False otherwise
         """
         if current_time is None:
             current_time = datetime.now()
         
         # If no previous scan today, allow
         if last_scan_time is None:
-            return (True, "First scan of the day")
+            return True
+        
+        # Parse last scan time
+        try:
+            last_dt = datetime.fromisoformat(last_scan_time.replace('Z', '+00:00'))
+        except:
+            # If can't parse, allow scan
+            return True
         
         # Check cooldown period
-        time_diff = (current_time - last_scan_time).total_seconds() / 60
+        time_diff = (current_time - last_dt).total_seconds() / 60
         if time_diff < self.duplicate_cooldown_minutes:
-            return (False, f"Duplicate scan (wait {int(self.duplicate_cooldown_minutes - time_diff)} min)")
+            # Within cooldown - check if different scan type
+            if last_scan_type and current_scan_type and last_scan_type != current_scan_type:
+                # Different scan type (login vs logout), allow
+                return True
+            # Same scan type or unknown, block
+            return False
         
-        # Check if in different session
-        current_session = self.get_current_session(current_time)
-        last_session = self.get_current_session(last_scan_time)
-        
-        if current_session != last_session:
-            return (True, f"Different session ({current_session.value})")
-        
-        # Same session - check scan type
-        current_scan_type, _ = self.get_expected_scan_type(current_time)
-        last_scan_type, _ = self.get_expected_scan_type(last_scan_time)
-        
-        if current_scan_type != last_scan_type:
-            return (True, f"Different scan type ({current_scan_type.value})")
-        
-        # Same session, same scan type - not allowed
-        return (False, f"Already scanned for {current_scan_type.value}")
+        # Outside cooldown period, allow
+        return True
