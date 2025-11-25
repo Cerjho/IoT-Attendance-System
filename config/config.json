@@ -126,7 +126,7 @@
     "api_url": "${SMS_API_URL}",
     "login_message_template": "📚 ATTENDANCE ALERT 📚\n\nGood day, Parent/Guardian!\n\nYour child {student_name} (Student ID: {student_id}) has successfully CHECKED IN to school.\n\n⏰ Time: {time}\n📅 Date: {date}\n✅ Status: Present\n\n📊 View full attendance:\n{attendance_link}\n\nThank you for your continued support!\n\n- Mabini High School\n  Automated Attendance System",
     "logout_message_template": "🏫 DEPARTURE NOTIFICATION 🏫\n\nGood day, Parent/Guardian!\n\nYour child {student_name} (Student ID: {student_id}) has successfully CHECKED OUT from school.\n\n⏰ Time: {time}\n📅 Date: {date}\n✅ Status: Departed Safely\n\n📊 View full attendance:\n{attendance_link}\n\nThank you and have a great evening!\n\n- Mabini High School\n  Automated Attendance System",
-    "attendance_view_url": "https://ddblgwzylvwuucnpmtzi.supabase.co/rest/v1/attendance?student_id=eq.{student_id}&select=*&order=date.desc,time_in.desc&limit=30",
+    "attendance_view_url": "https://cerjho.github.io/IoT-Attendance-System/view-attendance.html?student_id={student_id}",
     "send_on_capture": true,
     "retry_on_failure": true,
     "retry_attempts": 3
