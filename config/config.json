@@ -124,7 +124,8 @@
     "password": "${SMS_PASSWORD}",
     "device_id": "${SMS_DEVICE_ID}",
     "api_url": "${SMS_API_URL}",
-    "message_template": "Good day! This is to inform you that {student_name} (ID: {student_id}) has successfully checked in at {time} on {date}. Thank you and have a great day!",
+    "login_message_template": "Good day! This is to inform you that {student_name} (ID: {student_id}) has successfully checked IN at {time} on {date}. Thank you and have a great day!",
+    "logout_message_template": "Good day! This is to inform you that {student_name} (ID: {student_id}) has successfully checked OUT at {time} on {date}. Thank you and have a great day!",
     "send_on_capture": true,
     "retry_on_failure": true,
     "retry_attempts": 3

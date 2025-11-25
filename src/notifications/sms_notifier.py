@@ -37,8 +37,13 @@ class SMSNotifier:
         self.password = config.get('password')
         self.device_id = config.get('device_id')
         self.api_url = config.get('api_url', 'https://api.sms-gate.app/3rdparty/v1/message')
-        self.message_template = config.get('message_template', 
-            'Attendance Alert: {student_name} (ID: {student_id}) checked in at {time} on {date}.')
+        
+        # Support for separate login and logout message templates
+        self.login_message_template = config.get('login_message_template', 
+            config.get('message_template', 
+                'Good day! {student_name} (ID: {student_id}) checked IN at {time} on {date}.'))
+        self.logout_message_template = config.get('logout_message_template',
+            'Good day! {student_name} (ID: {student_id}) checked OUT at {time} on {date}.')
         
         # Validate configuration
         if self.enabled:
@@ -55,7 +60,8 @@ class SMSNotifier:
         student_id: str,
         student_name: Optional[str],
         parent_phone: str,
-        timestamp: Optional[datetime] = None
+        timestamp: Optional[datetime] = None,
+        scan_type: str = 'time_in'
     ) -> bool:
         """
         Send attendance notification to parent
@@ -65,6 +71,7 @@ class SMSNotifier:
             student_name: Student name (optional)
             parent_phone: Parent's phone number (E.164 format preferred)
             timestamp: Attendance timestamp (defaults to now)
+            scan_type: 'time_in' for login or 'time_out' for logout
             
         Returns:
             bool: True if notification sent successfully, False otherwise
@@ -81,8 +88,11 @@ class SMSNotifier:
         if timestamp is None:
             timestamp = datetime.now()
         
+        # Select appropriate message template based on scan type
+        message_template = self.logout_message_template if scan_type == 'time_out' else self.login_message_template
+        
         # Format message
-        message = self.message_template.format(
+        message = message_template.format(
             student_id=student_id,
             student_name=student_name or student_id,
             time=timestamp.strftime('%I:%M %p'),

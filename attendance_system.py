@@ -361,7 +361,8 @@ class IoTAttendanceSystem:
                             student_id=student_id,
                             student_name=student_data.get('name'),
                             parent_phone=student_data.get('parent_phone'),
-                            timestamp=datetime.now()
+                            timestamp=datetime.now(),
+                            scan_type=attendance_data.get('scan_type', 'time_in')
                         )
                         if sms_sent:
                             logger.info(f"SMS notification sent successfully to parent of {student_id}")
