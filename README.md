@@ -1,183 +1,258 @@
-# Supabase CLI
+# IoT Attendance System
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+Advanced face recognition attendance system for Raspberry Pi with automatic quality validation, offline capability, and cloud synchronization.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## Features
 
-This repository contains all the functionality for Supabase CLI.
+✨ **Automatic Face Capture** - 9 quality checks with 3-second stability requirement  
+🚀 **Lightning-Fast Scanning** - < 100ms response time with offline capability  
+☁️ **Cloud-First Architecture** - Supabase primary database with local SQLite cache  
+🔒 **Privacy Compliant** - Daily roster sync with automatic cache wipe  
+📱 **SMS Notifications** - Real-time parent/guardian notifications  
+🎯 **QR Code Validation** - Student verification against daily roster  
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+## Quick Start
 
-## Getting started
-
-### Install the CLI
-
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+### 1. Installation
 
 ```bash
-npm i supabase --save-dev
+# Clone repository
+git clone https://github.com/Cerjho/IoT-Attendance-System.git
+cd IoT-Attendance-System
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-To install the beta release channel:
+### 2. Configuration
+
+Edit `config/config.json` with your Supabase credentials:
+
+```json
+{
+  "cloud": {
+    "enabled": true,
+    "url": "https://your-project.supabase.co",
+    "api_key": "your_api_key_here"
+  }
+}
+```
+
+### 3. Setup Supabase
 
 ```bash
-npm i supabase@beta --save-dev
+# Create students table in Supabase
+# See docs/technical/SUPABASE_SETUP.md for SQL schema
+
+# Add students
+python utils/manage_supabase_students.py --import-csv data/students_template.csv
 ```
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
-
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
+### 4. Run System
 
 ```bash
-supabase bootstrap
+# Start attendance system
+python attendance_system.py
+
+# Or run in headless mode (no display)
+bash start_attendance.sh --headless
 ```
 
-Or using npx:
+## Project Structure
+
+```
+IoT-Attendance-System/
+├── attendance_system.py          # Main application
+├── start_attendance.sh            # Startup script
+├── requirements.txt               # Python dependencies
+├── config/
+│   └── config.json               # System configuration
+├── src/                          # Source code modules
+│   ├── camera/                   # Camera handling
+│   ├── cloud/                    # Cloud sync (Supabase)
+│   ├── database/                 # Local SQLite cache
+│   ├── face_quality.py           # Quality assessment
+│   ├── hardware/                 # Buzzer, GPIO control
+│   ├── lighting/                 # Lighting analysis
+│   ├── network/                  # Connectivity monitoring
+│   ├── notifications/            # SMS notifications
+│   ├── sync/                     # Roster synchronization
+│   └── utils/                    # Utilities and helpers
+├── utils/                        # Utility scripts
+│   ├── manage_supabase_students.py  # Student management
+│   ├── check_status.py           # System status checker
+│   ├── view_attendance.py        # View attendance records
+│   ├── generate_qr.py            # QR code generator
+│   └── test-scripts/             # Test utilities
+├── scripts/                      # Automation scripts
+│   ├── auto_cleanup.py           # Automatic cleanup
+│   └── sync_to_cloud.py          # Manual cloud sync
+├── data/                         # Data storage
+│   ├── attendance.db             # Local SQLite cache
+│   ├── photos/                   # Captured photos
+│   ├── qr_codes/                 # Generated QR codes
+│   └── logs/                     # System logs
+├── docs/                         # Documentation
+│   ├── user-guides/              # User documentation
+│   ├── technical/                # Technical documentation
+│   └── archived/                 # Archived/historical docs
+└── supabase/                     # Supabase configuration
+    └── migrations/               # Database migrations
+```
+
+## Documentation
+
+### User Guides
+- **[Quick Start](docs/user-guides/QUICKSTART.md)** - Get started in 5 minutes
+- **[Roster Sync Guide](docs/user-guides/QUICKSTART_ROSTER.md)** - Setup daily roster sync
+- **[SMS Setup](docs/user-guides/SMS_QUICKSTART.md)** - Configure SMS notifications
+- **[Quick Reference](docs/user-guides/QUICK_REFERENCE.md)** - Common commands
+
+### Technical Documentation
+- **[System Overview](docs/technical/SYSTEM_OVERVIEW.md)** - Architecture and components
+- **[Auto-Capture System](docs/technical/AUTO_CAPTURE.md)** - Face quality validation
+- **[Roster Sync](docs/technical/ROSTER_SYNC.md)** - Daily roster synchronization
+- **[Supabase Setup](docs/technical/SUPABASE_SETUP.md)** - Database configuration
+- **[SMS Notifications](docs/technical/SMS_NOTIFICATION_GUIDE.md)** - SMS integration
+
+## Key Workflows
+
+### Daily Operation
+
+**Morning (6 AM or on boot)**
+```
+System starts → Download today's roster from Supabase
+→ Cache 30-100 students locally → Ready for offline scanning
+```
+
+**During Class**
+```
+Student scans QR → Validate against roster → Face quality checks
+→ Auto-capture after 3s stability → Upload to Supabase → SMS notification
+```
+
+**Evening (6 PM)**
+```
+Auto-wipe student cache → Privacy compliance maintained
+```
+
+### Auto-Capture Process
+
+1. **QR Code Scan** - Student ID validation against roster
+2. **Quality Monitoring** - 9 simultaneous checks:
+   - Face count (exactly 1)
+   - Face size (≥ 80px width)
+   - Face centered (±12%)
+   - Head pose (yaw/pitch/roll limits)
+   - Eyes open (EAR > 0.25)
+   - Mouth closed
+   - Sharpness (Laplacian > 80)
+   - Brightness (70-180 range)
+   - Illumination uniformity
+3. **Stability Timer** - 3-second countdown when all checks pass
+4. **Capture & Upload** - High-quality photo saved and uploaded
+
+## Hardware Requirements
+
+- **Raspberry Pi 4B** (recommended) or 3B+
+- **Camera** - Raspberry Pi Camera Module v1/v2 or USB webcam
+- **Buzzer** (optional) - GPIO-connected for audio feedback
+- **Internet** - For initial roster sync and attendance upload
+
+## Performance
+
+- **Startup**: 5-10 seconds
+- **Roster Sync**: 2-5 seconds (once daily)
+- **QR Validation**: < 100ms (offline)
+- **Auto-Capture**: 3-8 seconds (with quality validation)
+- **Upload**: 200-500ms (when online)
+
+## Development
+
+### Testing
 
 ```bash
-npx supabase bootstrap
+# Test roster sync
+python utils/test-scripts/test_roster_sync.py
+
+# Test face quality
+python utils/test-scripts/test_face_quality.py
+
+# Check system status
+python utils/check_status.py
 ```
 
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+### Adding Students
 
-## Docs
+```bash
+# Add single student
+python utils/manage_supabase_students.py --add STU001 --name "John Doe"
 
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+# Import from CSV
+python utils/manage_supabase_students.py --import-csv data/students.csv
 
-## Breaking changes
-
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
+# List students
+python utils/manage_supabase_students.py --list
 ```
+
+### Viewing Attendance
+
+```bash
+# View today's attendance
+python utils/view_attendance.py
+
+# Export to JSON
+python utils/view_attendance.py --export
+```
+
+## Troubleshooting
+
+### Camera not working
+```bash
+# Check camera detection
+libcamera-hello --list-cameras
+
+# Test capture
+libcamera-still -o test.jpg
+```
+
+### Roster sync fails
+```bash
+# Check Supabase connection
+curl -X GET "https://your-project.supabase.co/rest/v1/students?limit=1" \
+  -H "apikey: your_api_key"
+
+# Force manual sync
+python utils/test-scripts/test_roster_sync.py
+```
+
+### Student rejected
+- Verify student exists in Supabase
+- Check if roster was synced today
+- Force re-sync roster
+
+## Contributing
+
+Contributions are welcome! Please read the contribution guidelines before submitting PRs.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: See `docs/` directory
+- **Issues**: GitHub Issues
+- **Logs**: Check `data/logs/attendance_system.log`
+
+## Acknowledgments
+
+- Face detection: OpenCV Haar Cascades
+- Cloud backend: Supabase
+- SMS gateway: SMS-Gate
+- Camera interface: Picamera2
+
+---
+
+**Last Updated**: November 25, 2025  
+**Version**: 2.0.0

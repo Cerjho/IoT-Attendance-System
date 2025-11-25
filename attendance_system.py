@@ -62,8 +62,8 @@ class IoTAttendanceSystem:
         self.config = load_config(config_file or 'config/config.json')
         
         # Create directories
-        os.makedirs('photos', exist_ok=True)
-        os.makedirs('logs', exist_ok=True)
+        os.makedirs('data/photos', exist_ok=True)
+        os.makedirs('data/logs', exist_ok=True)
         os.makedirs('data', exist_ok=True)
         
         # Initialize components
@@ -103,6 +103,20 @@ class IoTAttendanceSystem:
         # Initialize SMS notifications
         sms_config = self.config.get('sms_notifications', {})
         self.sms_notifier = SMSNotifier(sms_config)
+        
+        # Initialize roster sync manager (Supabase as primary, SQLite as cache)
+        self.roster_sync = RosterSyncManager(cloud_config, self.database.db_path)
+        
+        # Auto-sync roster on startup
+        if self.roster_sync.enabled:
+            logger.info("Starting roster sync on system startup...")
+            sync_result = self.roster_sync.auto_sync_on_startup()
+            if sync_result['success']:
+                logger.info(f"✅ Roster synced: {sync_result['students_synced']} students cached for today")
+                print(f"✅ Roster synced: {sync_result['students_synced']} students cached")
+            else:
+                logger.warning(f"⚠️  Roster sync failed: {sync_result['message']}")
+                print(f"⚠️  Roster sync failed: {sync_result['message']}")
         
         # Start background sync thread if cloud enabled
         self.sync_thread = None
@@ -206,7 +220,7 @@ class IoTAttendanceSystem:
             
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"attendance_{student_id}_{timestamp}.jpg"
-            filepath = os.path.join('photos', filename)
+            filepath = os.path.join('data/photos', filename)
             
             # Optionally capture a high-res still using Picamera2
             base_img = frame
@@ -431,6 +445,35 @@ class IoTAttendanceSystem:
                     if student_id:
                         # Buzzer feedback for QR detected
                         self.buzzer.beep('qr_detected')
+                        
+                        # Check if student is in today's roster (from Supabase cache)
+                        if self.roster_sync.enabled:
+                            student = self.roster_sync.get_cached_student(student_id)
+                            if not student:
+                                print(f"   ❌ UNAUTHORIZED: Student {student_id} not in today's roster")
+                                logger.warning(f"Student {student_id} not found in roster cache")
+                                self.buzzer.beep('error')
+                                
+                                if display:
+                                    cv2.putText(display_frame, "NOT IN TODAY'S ROSTER", (50, 200),
+                                              cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+                                    cv2.putText(display_frame, f"Student: {student_id}", (50, 260),
+                                              cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                                    cv2.imshow('Attendance System', display_frame)
+                                    cv2.waitKey(2000)  # Show for 2 seconds
+                                else:
+                                    time.sleep(2)
+                                
+                                continue
+                            else:
+                                logger.info(f"✓ Student {student_id} verified from roster: {student.get('name', 'Unknown')}")
+                        else:
+                            # Fallback: Check local database if roster sync disabled
+                            student = self.database.get_student(student_id)
+                            if not student:
+                                # Auto-register new student when roster sync is disabled
+                                self.database.add_student(student_id, name=None, email=None)
+                                logger.info(f"Auto-registered new student: {student_id}")
                         
                         # Check if already scanned today
                         if self.database.check_already_scanned_today(student_id):
@@ -699,7 +742,7 @@ class IoTAttendanceSystem:
             
             # Create demo record
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            photo_path = f"photos/demo_attendance_{student_id}_{timestamp}.jpg"
+            photo_path = f"data/photos/demo_attendance_{student_id}_{timestamp}.jpg"
             
             print(f"   ✓ Photo saved: {photo_path}")
             

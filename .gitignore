@@ -34,12 +34,19 @@ ENV/
 
 # Project-specific
 data/*.db
-data/*.db.backup*
-photos/*.jpg
-photos/*.png
-logs/*.log
-qr_codes/*.png
+data/*.db-*
+data/photos/*.jpg
+data/photos/*.png
+data/logs/*.log
+data/qr_codes/*.png
+data/*.json
 data/attendance_export_*.json
+
+# Keep directory structure
+!data/.gitkeep
+!data/photos/.gitkeep
+!data/qr_codes/.gitkeep
+!data/logs/.gitkeep
 
 # OS
 .DS_Store

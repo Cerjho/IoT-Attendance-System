@@ -26,6 +26,9 @@ class ConfigLoader:
         if config_file and os.path.exists(config_file):
             self.load_from_file(config_file)
         
+        # Resolve environment variable placeholders in config
+        self._resolve_env_placeholders(self.config)
+        
         # Load from environment variables (override file config)
         self.load_from_env()
     
@@ -52,14 +55,18 @@ class ConfigLoader:
     def load_from_env(self) -> None:
         """Load configuration from environment variables."""
         env_mappings = {
-            'SUPABASE_URL': ('supabase', 'url'),
-            'SUPABASE_KEY': ('supabase', 'key'),
+            'SUPABASE_URL': ('cloud', 'url'),
+            'SUPABASE_KEY': ('cloud', 'api_key'),
+            'DEVICE_ID': ('cloud', 'device_id'),
+            'SMS_USERNAME': ('sms_notifications', 'username'),
+            'SMS_PASSWORD': ('sms_notifications', 'password'),
+            'SMS_DEVICE_ID': ('sms_notifications', 'device_id'),
+            'SMS_API_URL': ('sms_notifications', 'api_url'),
             'CAMERA_INDEX': ('camera', 'index'),
             'CAMERA_RESOLUTION_WIDTH': ('camera', 'resolution', 'width'),
             'CAMERA_RESOLUTION_HEIGHT': ('camera', 'resolution', 'height'),
             'RECOGNITION_TOLERANCE': ('recognition', 'tolerance'),
             'DUPLICATE_WINDOW': ('attendance', 'duplicate_window_seconds'),
-            'DEVICE_ID': ('device', 'id'),
             'LOG_LEVEL': ('logging', 'level'),
         }
         
@@ -76,6 +83,20 @@ class ConfigLoader:
                 config[key] = {}
             config = config[key]
         config[path[-1]] = value
+    
+    def _resolve_env_placeholders(self, config: dict) -> None:
+        """Recursively resolve ${ENV_VAR} placeholders in config values."""
+        for key, value in config.items():
+            if isinstance(value, dict):
+                self._resolve_env_placeholders(value)
+            elif isinstance(value, str) and value.startswith('${') and value.endswith('}'):
+                env_var = value[2:-1]
+                env_value = os.getenv(env_var)
+                if env_value:
+                    config[key] = env_value
+                    logger.debug(f"Resolved {env_var} from environment")
+                else:
+                    logger.warning(f"Environment variable {env_var} not set for config key {key}")
     
     def get(self, key: str, default: Any = None) -> Any:
         """

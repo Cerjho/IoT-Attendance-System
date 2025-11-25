@@ -10,7 +10,7 @@ from src.camera import CameraHandler
 
 def display_status():
     """Display system status and information."""
-    setup_logger('root', log_dir='logs', level=logging.WARNING)
+    setup_logger('root', log_dir='data/logs', level=logging.WARNING)
     
     print("\n" + "="*60)
     print("FACE DETECTION SYSTEM - STATUS")
@@ -48,10 +48,11 @@ def display_status():
     # Check directories
     print("\n[DIRECTORIES]")
     dirs_to_check = {
-        'photos': 'photos/',
-        'logs': 'logs/',
+        'photos': 'data/photos/',
+        'logs': 'data/logs/',
         'config': 'config/',
-        'src': 'src/'
+        'src': 'src/',
+        'data': 'data/'
     }
     
     for name, path in dirs_to_check.items():

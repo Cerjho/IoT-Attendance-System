@@ -57,7 +57,7 @@ try:
     if result['failed'] > 0:
         print(f"❌ Failed to sync: {result['failed']} records")
         print("\nCheck logs for details:")
-        print("  tail -f logs/attendance_system_*.log | grep -i sync")
+        print("  tail -f data/logs/attendance_system_*.log | grep -i sync")
     
     print(f"\n📊 Final Status:")
     status = system.cloud_sync.get_sync_status()
