@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Daily Roster Sync Module
-Downloads today's student roster from Supabase and caches locally for fast offline scanning
+Downloads student roster from Supabase and caches locally for fast offline scanning
+Works with new Supabase schema (students table with student_number, first_name, last_name, etc.)
 Implements lightning-fast lookup (< 100ms) with 100% offline capability
 """
 
@@ -149,7 +150,14 @@ class RosterSyncManager:
     
     def _fetch_roster_from_supabase(self) -> Optional[List[Dict]]:
         """
-        Fetch today's student roster from Supabase
+        Fetch student roster from Supabase (NEW SCHEMA)
+        
+        New schema fields:
+        - student_number (primary identifier)
+        - first_name, middle_name, last_name
+        - parent_guardian_contact (phone)
+        - email, grade_level, section
+        - status (active/inactive)
         
         Returns:
             List of student dictionaries or None on failure
@@ -163,20 +171,18 @@ class RosterSyncManager:
                 'Content-Type': 'application/json'
             }
             
-            # Fetch all active students (you can add date filtering if needed)
+            # Fetch active students with all needed fields
             params = {
-                'select': 'student_id,name,email,parent_phone,status'
+                'select': 'student_number,first_name,middle_name,last_name,email,parent_guardian_contact,grade_level,section,status',
+                'status': 'eq.active'  # Only active students
             }
-            
-            # Optional: Filter only active students
-            # params['status'] = 'eq.active'
             
             logger.debug(f"Fetching roster from: {url}")
             response = requests.get(url, headers=headers, params=params, timeout=10)
             
             if response.status_code == 200:
                 students = response.json()
-                logger.info(f"📥 Downloaded {len(students)} students from Supabase")
+                logger.info(f"📥 Downloaded {len(students)} active students from new Supabase server")
                 return students
             else:
                 logger.error(f"Supabase API error: {response.status_code} - {response.text}")
@@ -205,7 +211,12 @@ class RosterSyncManager:
     
     def _cache_students_locally(self, students: List[Dict]) -> int:
         """
-        Cache downloaded students in local SQLite
+        Cache downloaded students in local SQLite (adapted for new schema)
+        
+        Maps new schema fields to local cache:
+        - student_number → student_id (local cache uses student_id)
+        - first_name + middle_name + last_name → name
+        - parent_guardian_contact → parent_phone
         
         Args:
             students: List of student dictionaries from Supabase
@@ -219,18 +230,26 @@ class RosterSyncManager:
             
             synced_count = 0
             for student in students:
-                student_id = student.get('student_id')
-                name = student.get('name')
+                # Map new schema to local cache fields
+                student_number = student.get('student_number')
+                first_name = student.get('first_name', '')
+                middle_name = student.get('middle_name', '')
+                last_name = student.get('last_name', '')
                 email = student.get('email')
-                parent_phone = student.get('parent_phone')
+                parent_phone = student.get('parent_guardian_contact')
                 
-                if not student_id:
+                if not student_number:
                     continue
                 
+                # Build full name
+                name_parts = [first_name, middle_name, last_name]
+                full_name = ' '.join([part for part in name_parts if part]).strip()
+                
+                # Store in local cache (using student_id field for compatibility)
                 cursor.execute('''
                     INSERT OR REPLACE INTO students (student_id, name, email, parent_phone, created_at)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (student_id, name, email, parent_phone, datetime.now().isoformat()))
+                ''', (student_number, full_name, email, parent_phone, datetime.now().isoformat()))
                 
                 synced_count += 1
             
@@ -362,7 +381,8 @@ class RosterSyncManager:
                 'last_sync_date': last_sync_date,
                 'last_sync_timestamp': last_sync_timestamp,
                 'sync_needed': sync_needed,
-                'device_id': device_id
+                'device_id': device_id,
+                'supabase_url': self.supabase_url
             }
         
         except Exception as e:

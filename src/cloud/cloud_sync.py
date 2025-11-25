@@ -74,16 +74,23 @@ class CloudSyncManager:
     
     def _insert_to_cloud(self, cloud_data: Dict) -> Optional[str]:
         """
-        Insert attendance record to cloud using REST API
+        Insert attendance record to cloud using REST API (NEW SCHEMA)
+        
+        New attendance table schema:
+        - student_id: UUID (foreign key to students.id)
+        - date: DATE
+        - time_in: TIME
+        - status: VARCHAR (present/late/absent/excused)
+        - device_id: VARCHAR
+        - remarks: TEXT (optional)
         
         Args:
-            cloud_data: Attendance data to insert
+            cloud_data: Attendance data to insert (must include student_number)
             
         Returns:
             Cloud record ID if successful, None otherwise
         """
         try:
-            url = f"{self.supabase_url}/rest/v1/attendance"
             headers = {
                 'apikey': self.supabase_key,
                 'Authorization': f'Bearer {self.supabase_key}',
@@ -91,11 +98,44 @@ class CloudSyncManager:
                 'Prefer': 'return=representation'
             }
             
-            response = requests.post(url, headers=headers, json=cloud_data, timeout=10)
+            # Step 1: Get student UUID from student_number
+            student_number = cloud_data.get('student_number')
+            if not student_number:
+                logger.error("Missing student_number in cloud_data")
+                return None
+            
+            student_url = f"{self.supabase_url}/rest/v1/students?student_number=eq.{student_number}&select=id"
+            student_response = requests.get(student_url, headers=headers, timeout=5)
+            
+            if student_response.status_code != 200:
+                logger.error(f"Failed to lookup student UUID: {student_response.status_code}")
+                return None
+            
+            students = student_response.json()
+            if not students or len(students) == 0:
+                logger.error(f"Student not found in Supabase: {student_number}")
+                return None
+            
+            student_uuid = students[0]['id']
+            
+            # Step 2: Prepare attendance data for new schema
+            attendance_url = f"{self.supabase_url}/rest/v1/attendance"
+            attendance_data = {
+                'student_id': student_uuid,  # UUID from students table
+                'date': cloud_data.get('date'),  # DATE field
+                'time_in': cloud_data.get('time_in'),  # TIME field
+                'status': cloud_data.get('status', 'present'),
+                'device_id': self.device_id,
+                'remarks': cloud_data.get('remarks', f"QR: {cloud_data.get('qr_data', 'N/A')}")
+            }
+            
+            # Step 3: Insert attendance record
+            response = requests.post(attendance_url, headers=headers, json=attendance_data, timeout=10)
             
             if response.status_code in [200, 201]:
                 data = response.json()
                 cloud_id = data[0]['id'] if isinstance(data, list) else data.get('id')
+                logger.info(f"Attendance synced to cloud: student {student_number} → UUID {student_uuid}")
                 return str(cloud_id)
             else:
                 logger.error(f"Cloud insert failed: {response.status_code} - {response.text}")
@@ -146,14 +186,18 @@ class CloudSyncManager:
                 uploader = PhotoUploader(self.supabase_url, self.supabase_key)
                 photo_url = uploader.upload_photo(photo_path, attendance_data.get('student_id'))
             
-            # Prepare attendance data for cloud
+            # Prepare attendance data for cloud (new schema)
+            # Parse timestamp into date and time components
+            timestamp = attendance_data.get('timestamp', datetime.now().isoformat())
+            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            
             cloud_data = {
-                'student_id': attendance_data.get('student_id'),
-                'timestamp': attendance_data.get('timestamp'),
-                'photo_url': photo_url,
-                'qr_data': attendance_data.get('qr_data'),
+                'student_number': attendance_data.get('student_id'),  # student_id is actually student_number in local cache
+                'date': dt.date().isoformat(),
+                'time_in': dt.time().isoformat(),
                 'status': attendance_data.get('status', 'present'),
-                'device_id': self.device_id
+                'qr_data': attendance_data.get('qr_data'),
+                'remarks': f"Photo: {photo_url}" if photo_url else None
             }
             
             # Insert into cloud database using REST API
@@ -239,14 +283,18 @@ class CloudSyncManager:
                         uploader = PhotoUploader(self.supabase_url, self.supabase_key)
                         photo_url = uploader.upload_photo(photo_path, attendance_data.get('student_id'))
                     
-                    # Sync attendance record
+                    # Sync attendance record (new schema)
+                    # Parse timestamp into date and time components
+                    timestamp = attendance_data.get('timestamp', datetime.now().isoformat())
+                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    
                     cloud_data = {
-                        'student_id': attendance_data.get('student_id'),
-                        'timestamp': attendance_data.get('timestamp'),
-                        'photo_url': photo_url,
-                        'qr_data': attendance_data.get('qr_data'),
+                        'student_number': attendance_data.get('student_id'),  # student_id is actually student_number
+                        'date': dt.date().isoformat(),
+                        'time_in': dt.time().isoformat(),
                         'status': attendance_data.get('status', 'present'),
-                        'device_id': self.device_id
+                        'qr_data': attendance_data.get('qr_data'),
+                        'remarks': f"Photo: {photo_url}" if photo_url else None
                     }
                     
                     # Insert using REST API
@@ -350,14 +398,18 @@ class CloudSyncManager:
                     uploader = PhotoUploader(self.supabase_url, self.supabase_key)
                     photo_url = uploader.upload_photo(photo_path, attendance_data.get('student_id'))
                 
-                # Sync record
+                # Sync record (new schema)
+                # Parse timestamp into date and time components
+                timestamp = attendance_data.get('timestamp', datetime.now().isoformat())
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                
                 cloud_data = {
-                    'student_id': attendance_data.get('student_id'),
-                    'timestamp': attendance_data.get('timestamp'),
-                    'photo_url': photo_url,
-                    'qr_data': attendance_data.get('qr_data'),
+                    'student_number': attendance_data.get('student_id'),  # student_id is actually student_number
+                    'date': dt.date().isoformat(),
+                    'time_in': dt.time().isoformat(),
                     'status': attendance_data.get('status', 'present'),
-                    'device_id': self.device_id
+                    'qr_data': attendance_data.get('qr_data'),
+                    'remarks': f"Photo: {photo_url}" if photo_url else None
                 }
                 
                 # Insert using REST API
