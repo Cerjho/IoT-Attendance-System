@@ -42,28 +42,28 @@ sms = SMSNotifier(config.get('sms_notifications', {}))
 
 logger.info("✅ All components initialized")
 
-# Test data
+# Test data (using real parent phone numbers)
 test_students = [
     {
         'student_number': '2021001',
         'name': 'Juan Dela Cruz',
         'grade': 'Grade 11',
         'section': 'STEM-A',
-        'parent_contact': '+639123456789'
+        'parent_contact': '09480205567'
     },
     {
         'student_number': '2021002',
         'name': 'Maria Santos',
         'grade': 'Grade 11',
         'section': 'STEM-A',
-        'parent_contact': '+639987654321'
+        'parent_contact': '09923783237'
     },
     {
         'student_number': '2021003',
         'name': 'Pedro Reyes',
         'grade': 'Grade 12',
         'section': 'ABM-B',
-        'parent_contact': '+639456789123'
+        'parent_contact': '09480205567'
     }
 ]
 
