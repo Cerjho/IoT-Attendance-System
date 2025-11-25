@@ -75,6 +75,9 @@ class SMSNotifier:
         self.logout_message_template = config.get('logout_message_template',
             'Good day! {student_name} (ID: {student_id}) checked OUT at {time} on {date}.')
         
+        # Attendance view URL for public access (no account needed)
+        self.attendance_view_url = config.get('attendance_view_url', '')
+        
         # Validate configuration
         if self.enabled:
             if not all([self.username, self.password, self.device_id]):
@@ -121,12 +124,18 @@ class SMSNotifier:
         # Select appropriate message template based on scan type
         message_template = self.logout_message_template if scan_type == 'time_out' else self.login_message_template
         
+        # Generate attendance view link
+        attendance_link = ''
+        if self.attendance_view_url:
+            attendance_link = self.attendance_view_url.format(student_id=student_id)
+        
         # Format message
         message = message_template.format(
             student_id=student_id,
             student_name=student_name or student_id,
             time=timestamp.strftime('%I:%M %p'),
-            date=timestamp.strftime('%B %d, %Y')
+            date=timestamp.strftime('%B %d, %Y'),
+            attendance_link=attendance_link
         )
         
         # Send SMS
