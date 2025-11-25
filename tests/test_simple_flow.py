@@ -6,10 +6,13 @@ Tests the complete attendance flow without hardware dependencies
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from pathlib import Path
+
+# Add project root to path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
 
 from datetime import datetime
-from pathlib import Path
 
 # Load environment
 from dotenv import load_dotenv
@@ -25,7 +28,7 @@ from src.network.connectivity import ConnectivityMonitor
 from src.notifications.sms_notifier import SMSNotifier
 
 logger = setup_logger("simple_flow_test")
-config = load_config()
+config = load_config('config/config.json')
 
 print("\n" + "=" * 80)
 print("SIMPLE REAL FLOW TEST (NO CAMERA)")
