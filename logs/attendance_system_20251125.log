@@ -1,0 +1,150 @@
+2025-11-25 19:58:20 - test_real_flow - ERROR - [test_real_flow.py:402] - Test error
+Traceback (most recent call last):
+  File "/home/iot/attendance-system/test_real_flow.py", line 395, in main
+    simulator.simulate_attendance(user_input)
+  File "/home/iot/attendance-system/test_real_flow.py", line 128, in simulate_attendance
+    student = self.db.get_student_by_number(student_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'AttendanceDatabase' object has no attribute 'get_student_by_number'
+2025-11-25 20:01:05 - test_real_flow - ERROR - [test_real_flow.py:402] - Test error
+Traceback (most recent call last):
+  File "/home/iot/attendance-system/test_real_flow.py", line 395, in main
+    simulator.simulate_attendance(user_input)
+  File "/home/iot/attendance-system/test_real_flow.py", line 128, in simulate_attendance
+    student = self.db.get_student_by_number(student_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'AttendanceDatabase' object has no attribute 'get_student_by_number'
+2025-11-25 20:01:23 - test_real_flow - ERROR - [test_real_flow.py:402] - Test error
+Traceback (most recent call last):
+  File "/home/iot/attendance-system/test_real_flow.py", line 395, in main
+    simulator.simulate_attendance(user_input)
+  File "/home/iot/attendance-system/test_real_flow.py", line 128, in simulate_attendance
+    student = self.db.get_student_by_number(student_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'AttendanceDatabase' object has no attribute 'get_student_by_number'
+2025-11-25 20:09:34 - test_real_flow - INFO - [test_real_system_flow.py:42] - ================================================================================
+2025-11-25 20:09:34 - test_real_flow - INFO - [test_real_system_flow.py:43] - REAL SYSTEM FLOW TEST (NO CAMERA)
+2025-11-25 20:09:34 - test_real_flow - INFO - [test_real_system_flow.py:44] - ================================================================================
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:42] - ================================================================================
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:43] - REAL SYSTEM FLOW TEST (NO CAMERA)
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:44] - ================================================================================
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:70] - ✅ All components initialized
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:74] - 
+================================================================================
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:75] - TEST STEP: Roster Sync
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:76] - ================================================================================
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:103] - 📥 Syncing student roster from Supabase...
+2025-11-25 20:09:47 - test_real_flow - WARNING - [test_real_system_flow.py:120] - ⚠️  Roster sync: Roster sync disabled
+2025-11-25 20:09:47 - test_real_flow - INFO - [test_real_system_flow.py:89] - ✅ Roster Sync - PASSED (0.00s)
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:42] - ================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:43] - REAL SYSTEM FLOW TEST (NO CAMERA)
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:44] - ================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:70] - ✅ All components initialized
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:74] - 
+================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:75] - TEST STEP: Roster Sync
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:76] - ================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:103] - 📥 Syncing student roster from Supabase...
+2025-11-25 20:10:23 - test_real_flow - WARNING - [test_real_system_flow.py:120] - ⚠️  Roster sync: Roster sync disabled
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:89] - ✅ Roster Sync - PASSED (0.00s)
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:394] - 
+📋 Testing with 3 students:
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:396] -    • 2021001: Test Student1
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:396] -    • 2021002: Test Student2
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:396] -    • 2021003: Test Student3
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:282] - 
+================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:283] - TESTING COMPLETE FLOW: Student 2021001
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:284] - ================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:74] - 
+================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:75] - TEST STEP: QR Code Scan
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:76] - ================================================================================
+2025-11-25 20:10:23 - test_real_flow - INFO - [test_real_system_flow.py:125] - 📱 Simulating QR scan: 2021001
+2025-11-25 20:10:23 - test_real_flow - ERROR - [test_real_system_flow.py:93] - ❌ QR Code Scan - FAILED: 'RosterSyncManager' object has no attribute 'lookup_student'
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:282] - 
+================================================================================
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:283] - TESTING COMPLETE FLOW: Student 2021002
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:284] - ================================================================================
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:74] - 
+================================================================================
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:75] - TEST STEP: QR Code Scan
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:76] - ================================================================================
+2025-11-25 20:10:25 - test_real_flow - INFO - [test_real_system_flow.py:125] - 📱 Simulating QR scan: 2021002
+2025-11-25 20:10:25 - test_real_flow - ERROR - [test_real_system_flow.py:93] - ❌ QR Code Scan - FAILED: 'RosterSyncManager' object has no attribute 'lookup_student'
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:282] - 
+================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:283] - TESTING COMPLETE FLOW: Student 2021003
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:284] - ================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:74] - 
+================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:75] - TEST STEP: QR Code Scan
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:76] - ================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:125] - 📱 Simulating QR scan: 2021003
+2025-11-25 20:10:27 - test_real_flow - ERROR - [test_real_system_flow.py:93] - ❌ QR Code Scan - FAILED: 'RosterSyncManager' object has no attribute 'lookup_student'
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:352] - 
+================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:353] - TEST SUMMARY
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:354] - ================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:360] - 
+Total Tests: 4
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:361] - ✅ Passed: 0
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:362] - ❌ Failed: 4
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:365] - 
+Failed Tests:
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:368] -   • Roster Sync: Unknown error
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:368] -   • QR Code Scan: 'RosterSyncManager' object has no attribute 'lookup_student'
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:368] -   • QR Code Scan: 'RosterSyncManager' object has no attribute 'lookup_student'
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:368] -   • QR Code Scan: 'RosterSyncManager' object has no attribute 'lookup_student'
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:370] - 
+================================================================================
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:371] - OVERALL: ❌ SOME TESTS FAILED
+2025-11-25 20:10:27 - test_real_flow - INFO - [test_real_system_flow.py:372] - ================================================================================
+2025-11-25 20:11:11 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:11:11 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:88] -    Session: unknown
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Scan Type: time_in
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Status: AttendanceStatus.PRESENT
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:105] - ✅ Scan allowed
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:114] - ✅ Photo saved: test_2021001_20251125_201135.txt
+2025-11-25 20:11:35 - simple_flow_test - INFO - [test_simple_flow.py:125] - ✅ Attendance recorded: ID None
+2025-11-25 20:11:35 - simple_flow_test - WARNING - [test_simple_flow.py:143] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_201150.txt
+2025-11-25 20:11:50 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 6
+2025-11-25 20:11:50 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:43] - ✅ All components initialized
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Juan Dela Cruz | Grade 11 - STEM-A
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021001_20251125_201220.txt
+2025-11-25 20:12:20 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 7
+2025-11-25 20:12:20 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:12:20 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Maria Santos | Grade 11 - STEM-A
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021002_20251125_201221.txt
+2025-11-25 20:12:21 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 8
+2025-11-25 20:12:21 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:12:21 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:79] - Student: Pedro Reyes | Grade 12 - ABM-B
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:89] -    Session: unknown
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:90] -    Scan Type: time_in
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:91] -    Status: present
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:106] - ✅ Scan allowed
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:115] - ✅ Photo saved: test_2021003_20251125_201222.txt
+2025-11-25 20:12:22 - simple_flow_test - INFO - [test_simple_flow.py:126] - ✅ Attendance recorded: ID 9
+2025-11-25 20:12:22 - simple_flow_test - WARNING - [test_simple_flow.py:144] - ⚠️  Cloud sync queued (offline or failed)
+2025-11-25 20:12:22 - simple_flow_test - WARNING - [test_simple_flow.py:157] - ⚠️  SMS failed (provider issue or disabled)
