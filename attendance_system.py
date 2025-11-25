@@ -46,6 +46,7 @@ from src.lighting import LightingAnalyzer, LightingCompensator
 from src.network import ConnectivityMonitor
 from src.cloud import CloudSyncManager
 from src.notifications import SMSNotifier
+from src.attendance.schedule_manager import ScheduleManager
 import threading
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,9 @@ class IoTAttendanceSystem:
         
         # Initialize roster sync manager (Supabase as primary, SQLite as cache)
         self.roster_sync = RosterSyncManager(cloud_config, self.database.db_path)
+        
+        # Initialize schedule manager for school schedule
+        self.schedule_manager = ScheduleManager(self.config)
         
         # Auto-sync roster on startup
         if self.roster_sync.enabled:
@@ -315,7 +319,7 @@ class IoTAttendanceSystem:
             logger.error(f"Error saving photo: {str(e)}")
             return None
     
-    def upload_to_database(self, student_id: str, photo_path: str, qr_data: str) -> bool:
+    def upload_to_database(self, student_id: str, photo_path: str, qr_data: str, scan_type: str = 'time_in', status: str = 'present') -> bool:
         """Upload attendance record to database and sync to cloud"""
         try:
             # Ensure student exists in database
@@ -326,7 +330,7 @@ class IoTAttendanceSystem:
                 logger.info(f"New student registered: {student_id}")
             
             # Record attendance locally
-            record_id = self.database.record_attendance(student_id, photo_path, qr_data)
+            record_id = self.database.record_attendance(student_id, photo_path, qr_data, scan_type, status)
             
             if record_id:
                 logger.info(f"Attendance uploaded to database (Record ID: {record_id})")
@@ -340,7 +344,8 @@ class IoTAttendanceSystem:
                         'timestamp': datetime.now().isoformat(),
                         'photo_path': photo_path,
                         'qr_data': qr_data,
-                        'status': 'present'
+                        'scan_type': scan_type,
+                        'status': status
                     }
                     
                     # Try to sync immediately (will queue if offline)
@@ -475,16 +480,30 @@ class IoTAttendanceSystem:
                                 self.database.add_student(student_id, name=None, email=None)
                                 logger.info(f"Auto-registered new student: {student_id}")
                         
-                        # Check if already scanned today
-                        if self.database.check_already_scanned_today(student_id):
-                            print(f"⚠️  Student {student_id} - ALREADY SCANNED TODAY")
+                        # Get current schedule info
+                        schedule_info = self.schedule_manager.get_schedule_info()
+                        expected_scan_type = schedule_info['expected_scan_type']
+                        current_session = schedule_info['current_session']
+                        
+                        # Check if this scan is allowed (duplicate prevention)
+                        last_scan = self.database.get_last_scan(student_id)
+                        
+                        if not self.schedule_manager.should_allow_scan(
+                            student_id=student_id,
+                            current_scan_type=expected_scan_type,
+                            last_scan_time=last_scan.get('timestamp') if last_scan else None,
+                            last_scan_type=last_scan.get('scan_type') if last_scan else None
+                        ):
+                            print(f"⚠️  Student {student_id} - ALREADY SCANNED (Cooldown: {self.schedule_manager.duplicate_cooldown_minutes} min)")
                             self.buzzer.beep('duplicate')
                             
                             if display:
-                                cv2.putText(display_frame, "ALREADY SCANNED TODAY", (50, 200),
+                                cv2.putText(display_frame, "ALREADY SCANNED", (50, 200),
                                           cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
                                 cv2.putText(display_frame, f"Student: {student_id}", (50, 260),
                                           cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                                cv2.putText(display_frame, f"Type: {expected_scan_type.upper()}", (50, 310),
+                                          cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                                 cv2.imshow('Attendance System', display_frame)
                                 cv2.waitKey(2000)  # Show for 2 seconds
                             else:
@@ -493,13 +512,19 @@ class IoTAttendanceSystem:
                             continue
                         
                         # Valid QR code - start capture process
+                        scan_type_display = "LOGIN" if expected_scan_type == 'time_in' else "LOGOUT"
+                        session_display = current_session.upper() if current_session != 'unknown' else "AFTER HOURS"
+                        
                         print(f"\n{'='*70}")
                         print(f"📱 QR CODE DETECTED: {student_id}")
+                        print(f"   Session: {session_display} | Type: {scan_type_display}")
                         print(f"{'='*70}")
                         print(f"👤 Starting face detection...")
                         
                         self.state = 'CAPTURING'
                         current_student_id = student_id
+                        current_scan_type = expected_scan_type
+                        current_session_name = current_session
                         capture_start_time = time.time()
                         face_detected = False
                         best_face_frame = None
@@ -507,14 +532,24 @@ class IoTAttendanceSystem:
                     
                     # Display standby screen
                     if display:
+                        # Get current schedule info
+                        schedule_info = self.schedule_manager.get_schedule_info()
+                        session_name = schedule_info['current_session'].upper() if schedule_info['current_session'] != 'unknown' else "AFTER HOURS"
+                        scan_type_name = "LOGIN" if schedule_info['expected_scan_type'] == 'time_in' else "LOGOUT"
+                        
                         cv2.putText(display_frame, "STANDBY - SCAN QR CODE", (50, 60),
                                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
                         cv2.putText(display_frame, "Show your QR code to camera", (50, 110),
                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
                         
+                        # Show schedule info
+                        cv2.putText(display_frame, f"Session: {session_name} | Scan: {scan_type_name}", 
+                                  (50, 160),
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+                        
                         # Show stats
                         stats = self.database.get_statistics()
-                        cv2.putText(display_frame, f"Today: {stats.get('today_attendance', 0)} students", 
+                        cv2.putText(display_frame, f"Today: {stats.get('today_attendance', 0)} records", 
                                   (50, display_frame.shape[0] - 30),
                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 
@@ -583,23 +618,39 @@ class IoTAttendanceSystem:
                             if photo_path:
                                 print(f"   ✓ Photo saved: {photo_path}")
                                 
+                                # Determine attendance status based on schedule
+                                attendance_status = self.schedule_manager.determine_attendance_status(
+                                    datetime.now(), 
+                                    self.schedule_manager.get_current_session(), 
+                                    self.schedule_manager.get_expected_scan_type()[0]
+                                )
+                                status_display = "ON TIME" if attendance_status == 'present' else "LATE"
+                                
+                                print(f"   📋 Status: {status_display}")
+                                
                                 # Upload to database
                                 print(f"   💾 Uploading to database...")
                                 self.state = 'UPLOADING'
                                 
-                                if self.upload_to_database(current_student_id, photo_path, current_student_id):
+                                if self.upload_to_database(current_student_id, photo_path, current_student_id, current_scan_type, attendance_status):
                                     self.session_count += 1
                                     self.buzzer.beep('success')
-                                    print(f"   ✓ Attendance recorded successfully!")
+                                    
+                                    scan_type_msg = "LOGIN" if current_scan_type == 'time_in' else "LOGOUT"
+                                    print(f"   ✓ {scan_type_msg} recorded successfully!")
                                     print(f"   📊 Total today: {self.session_count}")
                                     
                                     # Show success message
                                     if display:
                                         success_frame = frame.copy()
-                                        cv2.putText(success_frame, "SUCCESS!", (150, 240),
+                                        cv2.putText(success_frame, "SUCCESS!", (150, 180),
                                                   cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 0), 4)
-                                        cv2.putText(success_frame, f"Student: {current_student_id}", (150, 300),
+                                        cv2.putText(success_frame, f"Student: {current_student_id}", (150, 240),
                                                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+                                        cv2.putText(success_frame, f"Type: {scan_type_msg}", (150, 290),
+                                                  cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+                                        cv2.putText(success_frame, f"Status: {status_display}", (150, 340),
+                                                  cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0) if attendance_status == 'present' else (0, 165, 255), 2)
                                         cv2.imshow('Attendance System', success_frame)
                                         cv2.waitKey(1500)  # Show for 1.5 seconds
                                     else:

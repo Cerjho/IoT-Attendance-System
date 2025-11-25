@@ -51,6 +51,7 @@ class AttendanceDatabase:
                 timestamp TEXT NOT NULL,
                 photo_path TEXT,
                 qr_data TEXT,
+                scan_type TEXT DEFAULT 'time_in',
                 status TEXT DEFAULT 'present',
                 FOREIGN KEY (student_id) REFERENCES students(student_id)
             )
@@ -93,9 +94,15 @@ class AttendanceDatabase:
             logger.error(f"Error adding student: {str(e)}")
             return False
     
-    def record_attendance(self, student_id: str, photo_path: str, qr_data: str = None) -> Optional[int]:
+    def record_attendance(self, student_id: str, photo_path: str, qr_data: str = None, scan_type: str = 'time_in', status: str = 'present') -> Optional[int]:
         """
         Record attendance entry
+        Args:
+            student_id: Student identifier
+            photo_path: Path to captured photo
+            qr_data: QR code data
+            scan_type: 'time_in' for login or 'time_out' for logout
+            status: 'present', 'late', 'absent', 'excused'
         Returns: attendance record ID or None on failure
         """
         try:
@@ -105,16 +112,16 @@ class AttendanceDatabase:
             timestamp = datetime.now().isoformat()
             
             cursor.execute('''
-                INSERT INTO attendance (student_id, timestamp, photo_path, qr_data, status)
-                VALUES (?, ?, ?, ?, 'present')
-            ''', (student_id, timestamp, photo_path, qr_data))
+                INSERT INTO attendance (student_id, timestamp, photo_path, qr_data, scan_type, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (student_id, timestamp, photo_path, qr_data, scan_type, status))
             
             record_id = cursor.lastrowid
             
             conn.commit()
             conn.close()
             
-            logger.info(f"Attendance recorded: {student_id} (ID: {record_id})")
+            logger.info(f"Attendance recorded: {student_id} (ID: {record_id}, type: {scan_type}, status: {status})")
             return record_id
         
         except Exception as e:
@@ -169,18 +176,26 @@ class AttendanceDatabase:
             logger.error(f"Error getting today's attendance: {str(e)}")
             return []
     
-    def check_already_scanned_today(self, student_id: str) -> bool:
-        """Check if student already scanned today"""
+    def check_already_scanned_today(self, student_id: str, scan_type: str = None) -> bool:
+        """Check if student already scanned today for specific scan type"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
             today = datetime.now().date().isoformat()
             
-            cursor.execute('''
-                SELECT COUNT(*) FROM attendance
-                WHERE student_id = ? AND date(timestamp) = ?
-            ''', (student_id, today))
+            if scan_type:
+                # Check for specific scan type
+                cursor.execute('''
+                    SELECT COUNT(*) FROM attendance
+                    WHERE student_id = ? AND date(timestamp) = ? AND scan_type = ?
+                ''', (student_id, today, scan_type))
+            else:
+                # Check any scan today
+                cursor.execute('''
+                    SELECT COUNT(*) FROM attendance
+                    WHERE student_id = ? AND date(timestamp) = ?
+                ''', (student_id, today))
             
             count = cursor.fetchone()[0]
             conn.close()
@@ -190,6 +205,33 @@ class AttendanceDatabase:
         except Exception as e:
             logger.error(f"Error checking attendance: {str(e)}")
             return False
+    
+    def get_last_scan(self, student_id: str) -> Optional[Dict]:
+        """Get student's last scan record for today"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            today = datetime.now().date().isoformat()
+            
+            cursor.execute('''
+                SELECT * FROM attendance
+                WHERE student_id = ? AND date(timestamp) = ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+            ''', (student_id, today))
+            
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                return dict(row)
+            return None
+        
+        except Exception as e:
+            logger.error(f"Error getting last scan: {str(e)}")
+            return None
     
     def get_statistics(self) -> Dict:
         """Get attendance statistics"""

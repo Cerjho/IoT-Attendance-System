@@ -123,11 +123,16 @@ class CloudSyncManager:
             attendance_data = {
                 'student_id': student_uuid,  # UUID from students table
                 'date': cloud_data.get('date'),  # DATE field
-                'time_in': cloud_data.get('time_in'),  # TIME field
                 'status': cloud_data.get('status', 'present'),
                 'device_id': self.device_id,
                 'remarks': cloud_data.get('remarks', f"QR: {cloud_data.get('qr_data', 'N/A')}")
             }
+            
+            # Add time_in or time_out based on scan type
+            if cloud_data.get('time_in'):
+                attendance_data['time_in'] = cloud_data.get('time_in')
+            if cloud_data.get('time_out'):
+                attendance_data['time_out'] = cloud_data.get('time_out')
             
             # Step 3: Insert attendance record
             response = requests.post(attendance_url, headers=headers, json=attendance_data, timeout=10)
@@ -194,11 +199,17 @@ class CloudSyncManager:
             cloud_data = {
                 'student_number': attendance_data.get('student_id'),  # student_id is actually student_number in local cache
                 'date': dt.date().isoformat(),
-                'time_in': dt.time().isoformat(),
                 'status': attendance_data.get('status', 'present'),
                 'qr_data': attendance_data.get('qr_data'),
                 'remarks': f"Photo: {photo_url}" if photo_url else None
             }
+            
+            # Add time_in or time_out based on scan type
+            scan_type = attendance_data.get('scan_type', 'time_in')
+            if scan_type == 'time_out':
+                cloud_data['time_out'] = dt.time().isoformat()
+            else:
+                cloud_data['time_in'] = dt.time().isoformat()
             
             # Insert into cloud database using REST API
             cloud_record_id = self._insert_to_cloud(cloud_data)
@@ -291,11 +302,17 @@ class CloudSyncManager:
                     cloud_data = {
                         'student_number': attendance_data.get('student_id'),  # student_id is actually student_number
                         'date': dt.date().isoformat(),
-                        'time_in': dt.time().isoformat(),
                         'status': attendance_data.get('status', 'present'),
                         'qr_data': attendance_data.get('qr_data'),
                         'remarks': f"Photo: {photo_url}" if photo_url else None
                     }
+                    
+                    # Add time_in or time_out based on scan type
+                    scan_type = attendance_data.get('scan_type', 'time_in')
+                    if scan_type == 'time_out':
+                        cloud_data['time_out'] = dt.time().isoformat()
+                    else:
+                        cloud_data['time_in'] = dt.time().isoformat()
                     
                     # Insert using REST API
                     cloud_record_id = self._insert_to_cloud(cloud_data)
@@ -406,11 +423,17 @@ class CloudSyncManager:
                 cloud_data = {
                     'student_number': attendance_data.get('student_id'),  # student_id is actually student_number
                     'date': dt.date().isoformat(),
-                    'time_in': dt.time().isoformat(),
                     'status': attendance_data.get('status', 'present'),
                     'qr_data': attendance_data.get('qr_data'),
                     'remarks': f"Photo: {photo_url}" if photo_url else None
                 }
+                
+                # Add time_in or time_out based on scan type
+                scan_type = attendance_data.get('scan_type', 'time_in')
+                if scan_type == 'time_out':
+                    cloud_data['time_out'] = dt.time().isoformat()
+                else:
+                    cloud_data['time_in'] = dt.time().isoformat()
                 
                 # Insert using REST API
                 cloud_record_id = self._insert_to_cloud(cloud_data)

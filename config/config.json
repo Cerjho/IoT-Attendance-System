@@ -48,6 +48,30 @@
     "level": "INFO",
     "log_dir": "logs"
   },
+  "school_schedule": {
+    "morning_class": {
+      "start_time": "07:00",
+      "end_time": "12:00",
+      "login_window_start": "06:30",
+      "login_window_end": "07:30",
+      "logout_window_start": "11:30",
+      "logout_window_end": "12:30",
+      "late_threshold_minutes": 15
+    },
+    "afternoon_class": {
+      "start_time": "13:00",
+      "end_time": "17:00",
+      "login_window_start": "12:30",
+      "login_window_end": "13:30",
+      "logout_window_start": "16:30",
+      "logout_window_end": "17:30",
+      "late_threshold_minutes": 15
+    },
+    "auto_detect_session": true,
+    "allow_early_arrival": true,
+    "require_logout": true,
+    "duplicate_scan_cooldown_minutes": 5
+  },
   "cloud": {
     "enabled": true,
     "provider": "supabase",
@@ -64,7 +88,7 @@
       "sync_time": "06:00",
       "cache_expiry_hours": 24,
       "auto_wipe_after_class": true,
-      "class_end_time": "18:00"
+      "class_end_time": "17:30"
     }
   },
   "lighting": {
