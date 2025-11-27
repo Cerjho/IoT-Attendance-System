@@ -217,13 +217,15 @@ def test_power_button():
     print("=" * 70)
     print()
     
-        config = {
+    config = {
         'enabled': True,
         'gpio_pin': 3,
         'short_press_seconds': 3,
         'long_press_seconds': 5,
         'debounce_ms': 100  # Increased debounce
-    }    button = PowerButtonController(config)
+    }
+    
+    button = PowerButtonController(config)
     
     if not button.gpio_available:
         print("ERROR: GPIO not available")
