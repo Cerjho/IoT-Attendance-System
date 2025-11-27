@@ -102,7 +102,7 @@
   },
   "buzzer": {
     "enabled": true,
-    "gpio_pin": 16,
+    "gpio_pin": 23,
     "qr_detected_pattern": [100, 50, 100],
     "face_detected_pattern": [50],
     "success_pattern": [200, 100, 200, 100, 200],
@@ -112,9 +112,9 @@
   "rgb_led": {
     "enabled": true,
     "gpio_pins": {
-      "red": 11,
-      "green": 13,
-      "blue": 15
+      "red": 17,
+      "green": 27,
+      "blue": 22
     },
     "colors": {
       "qr_detected": [0, 0, 255],
