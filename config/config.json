@@ -102,12 +102,32 @@
   },
   "buzzer": {
     "enabled": true,
-    "gpio_pin": 17,
+    "gpio_pin": 16,
     "qr_detected_pattern": [100, 50, 100],
     "face_detected_pattern": [50],
     "success_pattern": [200, 100, 200, 100, 200],
     "error_pattern": [1000],
     "duplicate_pattern": [100, 100, 100, 100, 100]
+  },
+  "rgb_led": {
+    "enabled": true,
+    "gpio_pins": {
+      "red": 11,
+      "green": 13,
+      "blue": 15
+    },
+    "colors": {
+      "qr_detected": [0, 0, 255],
+      "face_detected": [255, 165, 0],
+      "success": [0, 255, 0],
+      "error": [255, 0, 0],
+      "duplicate": [255, 255, 0],
+      "late": [255, 165, 0],
+      "processing": [255, 0, 255]
+    },
+    "brightness": 100,
+    "fade_duration_ms": 500,
+    "hold_duration_ms": 2000
   },
   "offline_mode": {
     "enabled": true,

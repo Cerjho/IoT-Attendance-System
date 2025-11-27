@@ -42,6 +42,7 @@ from src.detection_only import SimpleFaceDetector
 from src.database import AttendanceDatabase
 from src.database.sync_queue import SyncQueueManager
 from src.hardware import BuzzerController
+from src.hardware.rgb_led_controller import RGBLEDController
 from src.lighting import LightingAnalyzer, LightingCompensator
 from src.network import ConnectivityMonitor
 from src.cloud import CloudSyncManager
@@ -87,6 +88,10 @@ class IoTAttendanceSystem:
             'duplicate': buzzer_config.get('duplicate_pattern', [100, 100, 100, 100, 100])
         }
         self.buzzer = BuzzerController(buzzer_config)
+        
+        # Initialize RGB LED
+        rgb_config = self.config.get('rgb_led', {})
+        self.rgb_led = RGBLEDController(rgb_config)
         
         # Initialize lighting components
         lighting_config = self.config.get('lighting', {})
@@ -450,8 +455,9 @@ class IoTAttendanceSystem:
                     student_id = self.scan_qr_code(frame)
                     
                     if student_id:
-                        # Buzzer feedback for QR detected
+                        # Audio and visual feedback for QR detected
                         self.buzzer.beep('qr_detected')
+                        self.rgb_led.show_color('qr_detected', fade=True, blocking=False)
                         
                         # Check if student is in today's roster (from Supabase cache)
                         if self.roster_sync.enabled:
@@ -460,6 +466,7 @@ class IoTAttendanceSystem:
                                 print(f"   ❌ UNAUTHORIZED: Student {student_id} not in today's roster")
                                 logger.warning(f"Student {student_id} not found in roster cache")
                                 self.buzzer.beep('error')
+                                self.rgb_led.show_color('error', fade=True, blocking=False)
                                 
                                 if display:
                                     cv2.putText(display_frame, "NOT IN TODAY'S ROSTER", (50, 200),
@@ -498,6 +505,7 @@ class IoTAttendanceSystem:
                         ):
                             print(f"⚠️  Student {student_id} - ALREADY SCANNED (Cooldown: {self.schedule_manager.duplicate_cooldown_minutes} min)")
                             self.buzzer.beep('duplicate')
+                            self.rgb_led.show_color('duplicate', fade=True, blocking=False)
                             
                             if display:
                                 cv2.putText(display_frame, "ALREADY SCANNED", (50, 200),
@@ -568,6 +576,7 @@ class IoTAttendanceSystem:
                         if not face_detected:
                             face_detected = True
                             self.buzzer.beep('face_detected')
+                            self.rgb_led.show_color('face_detected', fade=True, blocking=False)
                             print(f"   ✓ Face detected!")
                         
                         # Store best face (largest face)
@@ -637,6 +646,7 @@ class IoTAttendanceSystem:
                                 if self.upload_to_database(current_student_id, photo_path, current_student_id, current_scan_type, attendance_status):
                                     self.session_count += 1
                                     self.buzzer.beep('success')
+                                    self.rgb_led.show_color('success', fade=True, blocking=False)
                                     
                                     scan_type_msg = "LOGIN" if current_scan_type == 'time_in' else "LOGOUT"
                                     print(f"   ✓ {scan_type_msg} recorded successfully!")
@@ -662,6 +672,7 @@ class IoTAttendanceSystem:
                         else:
                             # No face detected
                             self.buzzer.beep('error')
+                            self.rgb_led.show_color('error', fade=True, blocking=False)
                             print(f"   ❌ No face detected in capture window")
                             
                             if display:
@@ -823,10 +834,14 @@ class IoTAttendanceSystem:
         print("SYSTEM SHUTDOWN")
         print("="*70)
         
-        # Clean up buzzer
+        # Clean up hardware
         if self.buzzer:
             self.buzzer.cleanup()
             logger.info("Buzzer cleaned up")
+        
+        if self.rgb_led:
+            self.rgb_led.cleanup()
+            logger.info("RGB LED cleaned up")
         
         # Release camera
         if self.camera:
