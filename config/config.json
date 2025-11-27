@@ -135,7 +135,8 @@
     "gpio_pin": 3,
     "short_press_seconds": 3,
     "long_press_seconds": 5,
-    "debounce_ms": 50
+    "debounce_ms": 100,
+    "min_press_interval_seconds": 2
   },
   "offline_mode": {
     "enabled": true,

@@ -93,14 +93,29 @@ class PowerButtonController:
     def _monitor_button(self):
         """Monitor button presses in background thread"""
         try:
+            last_press_time = 0
+            min_press_interval = 2.0  # Minimum 2 seconds between presses
+            
             while self._monitoring:
                 # Wait for button press (GPIO goes LOW when pressed)
                 if self.GPIO.input(self.gpio_pin) == self.GPIO.LOW:
-                    # Debounce
+                    current_time = time.time()
+                    
+                    # Ignore if too soon after last press
+                    if current_time - last_press_time < min_press_interval:
+                        time.sleep(0.1)
+                        continue
+                    
+                    # Enhanced debounce - check multiple times
                     time.sleep(self.debounce_time / 1000.0)
                     
+                    # Verify button is still pressed after debounce
                     if self.GPIO.input(self.gpio_pin) == self.GPIO.LOW:
-                        self._handle_button_press()
+                        # Double-check with another delay
+                        time.sleep(0.05)
+                        if self.GPIO.input(self.gpio_pin) == self.GPIO.LOW:
+                            last_press_time = current_time
+                            self._handle_button_press()
                 
                 time.sleep(0.1)
         
@@ -202,15 +217,13 @@ def test_power_button():
     print("=" * 70)
     print()
     
-    config = {
+        config = {
         'enabled': True,
         'gpio_pin': 3,
         'short_press_seconds': 3,
         'long_press_seconds': 5,
-        'debounce_ms': 50
-    }
-    
-    button = PowerButtonController(config)
+        'debounce_ms': 100  # Increased debounce
+    }    button = PowerButtonController(config)
     
     if not button.gpio_available:
         print("ERROR: GPIO not available")
