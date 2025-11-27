@@ -112,9 +112,9 @@
   "rgb_led": {
     "enabled": true,
     "gpio_pins": {
-      "red": 17,
+      "red": 22,
       "green": 27,
-      "blue": 22
+      "blue": 17
     },
     "colors": {
       "qr_detected": [0, 0, 255],

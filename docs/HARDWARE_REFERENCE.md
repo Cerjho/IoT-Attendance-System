@@ -6,9 +6,9 @@
 Component       GPIO Pin    Resistor    Connection
 ─────────────────────────────────────────────────────────
 Buzzer          23          1kΩ         GPIO → R → Buzzer(+) → Buzzer(-) → GND
-RGB LED (Red)   17          1kΩ         GPIO → R → Anode
+RGB LED (Red)   22          1kΩ         GPIO → R → Anode
 RGB LED (Green) 27          1kΩ         GPIO → R → Anode
-RGB LED (Blue)  22          1kΩ         GPIO → R → Anode
+RGB LED (Blue)  17          1kΩ         GPIO → R → Anode
 Common Cathode  -           -           → GND
 ```
 
@@ -58,7 +58,7 @@ python3 attendance_system.py
 ## Common Issues
 
 **LED not working:**
-- Check pin connections (R=17, G=27, B=22)
+- Check pin connections (R=22, G=27, B=17)
 - Verify 1kΩ resistors
 - Confirm common cathode type (not common anode)
 - Test with: `python3 tests/test_hardware.py`
