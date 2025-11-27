@@ -43,6 +43,7 @@ from src.database import AttendanceDatabase
 from src.database.sync_queue import SyncQueueManager
 from src.hardware import BuzzerController
 from src.hardware.rgb_led_controller import RGBLEDController
+from src.hardware.power_button import PowerButtonController
 from src.lighting import LightingAnalyzer, LightingCompensator
 from src.network import ConnectivityMonitor
 from src.cloud import CloudSyncManager
@@ -92,6 +93,11 @@ class IoTAttendanceSystem:
         # Initialize RGB LED
         rgb_config = self.config.get('rgb_led', {})
         self.rgb_led = RGBLEDController(rgb_config)
+        
+        # Initialize power button
+        power_button_config = self.config.get('power_button', {})
+        self.power_button = PowerButtonController(power_button_config)
+        self.power_button.start_monitoring()
         
         # Initialize lighting components
         lighting_config = self.config.get('lighting', {})
@@ -842,6 +848,10 @@ class IoTAttendanceSystem:
         if self.rgb_led:
             self.rgb_led.cleanup()
             logger.info("RGB LED cleaned up")
+        
+        if self.power_button:
+            self.power_button.cleanup()
+            logger.info("Power button cleaned up")
         
         # Release camera
         if self.camera:

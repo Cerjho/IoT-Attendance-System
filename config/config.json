@@ -126,8 +126,16 @@
       "processing": [255, 0, 255]
     },
     "brightness": 100,
+    "use_full_brightness": true,
     "fade_duration_ms": 500,
     "hold_duration_ms": 2000
+  },
+  "power_button": {
+    "enabled": true,
+    "gpio_pin": 3,
+    "short_press_seconds": 3,
+    "long_press_seconds": 5,
+    "debounce_ms": 50
   },
   "offline_mode": {
     "enabled": true,

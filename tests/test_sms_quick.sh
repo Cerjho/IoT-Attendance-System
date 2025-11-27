@@ -8,7 +8,6 @@ echo ""
 echo "Make sure your SMS Gateway device is:"
 echo "  1. Connected to internet"
 echo "  2. SMS-Gate app is running"
-echo "  3. Device ID: zmmfTkL3NacdGAfNqwD7q"
 echo ""
 echo "Press Enter when ready..."
 read
