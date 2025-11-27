@@ -81,9 +81,44 @@ class ScheduleManager:
         self.require_logout = config.get('require_logout', True)
         self.duplicate_cooldown_minutes = config.get('duplicate_scan_cooldown_minutes', 5)
         
+        # Validate configuration
+        self._validate_config()
+        
         logger.info("Schedule Manager initialized:")
         logger.info(f"  Morning: {self.morning_start.strftime('%H:%M')} - {self.morning_end.strftime('%H:%M')}")
         logger.info(f"  Afternoon: {self.afternoon_start.strftime('%H:%M')} - {self.afternoon_end.strftime('%H:%M')}")
+    
+    def _validate_config(self):
+        """Validate schedule configuration for logical consistency"""
+        # Morning session validation
+        if self.morning_start >= self.morning_end:
+            raise ValueError(f"Morning start time ({self.morning_start}) must be before end time ({self.morning_end})")
+        if self.morning_login_start >= self.morning_login_end:
+            raise ValueError("Morning login window start must be before end")
+        if self.morning_logout_start >= self.morning_logout_end:
+            raise ValueError("Morning logout window start must be before end")
+        if self.morning_late_threshold < 0:
+            raise ValueError(f"Morning late threshold cannot be negative: {self.morning_late_threshold}")
+        
+        # Afternoon session validation
+        if self.afternoon_start >= self.afternoon_end:
+            raise ValueError(f"Afternoon start time ({self.afternoon_start}) must be before end time ({self.afternoon_end})")
+        if self.afternoon_login_start >= self.afternoon_login_end:
+            raise ValueError("Afternoon login window start must be before end")
+        if self.afternoon_logout_start >= self.afternoon_logout_end:
+            raise ValueError("Afternoon logout window start must be before end")
+        if self.afternoon_late_threshold < 0:
+            raise ValueError(f"Afternoon late threshold cannot be negative: {self.afternoon_late_threshold}")
+        
+        # General validation
+        if self.duplicate_cooldown_minutes < 0:
+            raise ValueError(f"Duplicate cooldown cannot be negative: {self.duplicate_cooldown_minutes}")
+        
+        # Session overlap check
+        if self.morning_end > self.afternoon_start:
+            logger.warning(f"Morning session end ({self.morning_end}) overlaps with afternoon start ({self.afternoon_start})")
+        
+        logger.debug("Schedule configuration validated successfully")
     
     def _parse_time(self, time_str: str) -> time:
         """Parse time string (HH:MM) to time object"""

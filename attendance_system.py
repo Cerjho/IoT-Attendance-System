@@ -206,6 +206,25 @@ class IoTAttendanceSystem:
             logger.error(f"Error initializing camera: {str(e)}")
             return False
     
+    def _show_message(self, frame, title: str, subtitle: str = None, color: tuple = (255, 255, 255), 
+                      subtitle2: str = None, subtitle3: str = None, duration_ms: int = 2000):
+        """Helper method to display message on frame"""
+        if frame is None:
+            return
+        
+        display_frame = frame.copy()
+        cv2.putText(display_frame, title, (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3)
+        
+        if subtitle:
+            cv2.putText(display_frame, subtitle, (50, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+        if subtitle2:
+            cv2.putText(display_frame, subtitle2, (50, 310), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        if subtitle3:
+            cv2.putText(display_frame, subtitle3, (50, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        
+        cv2.imshow('Attendance System', display_frame)
+        cv2.waitKey(duration_ms)
+    
     def scan_qr_code(self, frame) -> str:
         """Scan QR code from frame, returns student_id or None"""
         try:
@@ -457,8 +476,10 @@ class IoTAttendanceSystem:
                 
                 # ===== STATE: STANDBY =====
                 if self.state == 'STANDBY':
-                    # Scan for QR code
-                    student_id = self.scan_qr_code(frame)
+                    # Scan for QR code (optimized: every 3rd frame for performance)
+                    student_id = None
+                    if frame_count % 3 == 0:
+                        student_id = self.scan_qr_code(frame)
                     
                     if student_id:
                         # Audio and visual feedback for QR detected
@@ -475,12 +496,8 @@ class IoTAttendanceSystem:
                                 self.rgb_led.show_color('error', fade=True, blocking=False)
                                 
                                 if display:
-                                    cv2.putText(display_frame, "NOT IN TODAY'S ROSTER", (50, 200),
-                                              cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
-                                    cv2.putText(display_frame, f"Student: {student_id}", (50, 260),
-                                              cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-                                    cv2.imshow('Attendance System', display_frame)
-                                    cv2.waitKey(2000)  # Show for 2 seconds
+                                    self._show_message(display_frame, "NOT IN TODAY'S ROSTER", 
+                                                     f"Student: {student_id}", (0, 0, 255), duration_ms=2000)
                                 else:
                                     time.sleep(2)
                                 
@@ -514,14 +531,9 @@ class IoTAttendanceSystem:
                             self.rgb_led.show_color('duplicate', fade=True, blocking=False)
                             
                             if display:
-                                cv2.putText(display_frame, "ALREADY SCANNED", (50, 200),
-                                          cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
-                                cv2.putText(display_frame, f"Student: {student_id}", (50, 260),
-                                          cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-                                cv2.putText(display_frame, f"Type: {expected_scan_type.upper()}", (50, 310),
-                                          cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                                cv2.imshow('Attendance System', display_frame)
-                                cv2.waitKey(2000)  # Show for 2 seconds
+                                self._show_message(display_frame, "ALREADY SCANNED", 
+                                                 f"Student: {student_id}", (0, 0, 255),
+                                                 f"Type: {expected_scan_type.upper()}", duration_ms=2000)
                             else:
                                 time.sleep(2)
                             
@@ -660,17 +672,13 @@ class IoTAttendanceSystem:
                                     
                                     # Show success message
                                     if display:
-                                        success_frame = frame.copy()
-                                        cv2.putText(success_frame, "SUCCESS!", (150, 180),
-                                                  cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 0), 4)
-                                        cv2.putText(success_frame, f"Student: {current_student_id}", (150, 240),
-                                                  cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
-                                        cv2.putText(success_frame, f"Type: {scan_type_msg}", (150, 290),
-                                                  cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
-                                        cv2.putText(success_frame, f"Status: {status_display}", (150, 340),
-                                                  cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0) if attendance_status == 'present' else (0, 165, 255), 2)
-                                        cv2.imshow('Attendance System', success_frame)
-                                        cv2.waitKey(1500)  # Show for 1.5 seconds
+                                        status_color = (0, 255, 0) if attendance_status == 'present' else (0, 165, 255)
+                                        self._show_message(frame, "SUCCESS!", 
+                                                         f"Student: {current_student_id}",
+                                                         (0, 255, 0),
+                                                         f"Type: {scan_type_msg}",
+                                                         f"Status: {status_display}",
+                                                         duration_ms=1500)
                                     else:
                                         time.sleep(1.5)
                                 else:
@@ -682,13 +690,8 @@ class IoTAttendanceSystem:
                             print(f"   ❌ No face detected in capture window")
                             
                             if display:
-                                fail_frame = frame.copy()
-                                cv2.putText(fail_frame, "NO FACE DETECTED", (100, 240),
-                                          cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                                cv2.putText(fail_frame, "Please try again", (150, 300),
-                                          cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
-                                cv2.imshow('Attendance System', fail_frame)
-                                cv2.waitKey(2000)
+                                self._show_message(frame, "NO FACE DETECTED", 
+                                                 "Please try again", (0, 0, 255), duration_ms=2000)
                             else:
                                 time.sleep(2)
                         

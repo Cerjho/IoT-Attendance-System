@@ -43,13 +43,37 @@ class CloudSyncManager:
         self.client = None
         self._sync_count = 0
         
+        # Validate environment variables are loaded (not placeholders)
         if self.enabled:
+            self._validate_credentials()
             self._initialize_client()
+    
+    def _validate_credentials(self):
+        """Validate that environment variables are properly loaded"""
+        if self.supabase_url and self.supabase_url.startswith('${'):
+            raise ValueError(f"Environment variable not loaded for Supabase URL: {self.supabase_url}")
+        if self.supabase_key and self.supabase_key.startswith('${'):
+            raise ValueError(f"Environment variable not loaded for Supabase API key")
+        if self.device_id and self.device_id.startswith('${'):
+            raise ValueError(f"Environment variable not loaded for device_id: {self.device_id}")
+    
+    def _get_retry_delay(self, attempt: int) -> int:
+        """Calculate exponential backoff delay"""
+        # Exponential backoff: 30s, 60s, 120s, capped at 300s (5 minutes)
+        delay = min(self.retry_delay * (2 ** attempt), 300)
+        logger.debug(f"Retry attempt {attempt + 1}: waiting {delay}s")
+        return delay
     
     def _initialize_client(self):
         """Initialize Supabase REST API client"""
         if not self.supabase_url or not self.supabase_key:
             logger.warning("Supabase credentials not configured - cloud sync disabled")
+            self.enabled = False
+            return
+        
+        # Additional validation for placeholder values
+        if self.supabase_url.startswith('${') or self.supabase_key.startswith('${'):
+            logger.error("Environment variables not properly loaded - using placeholder values")
             self.enabled = False
             return
         

@@ -84,7 +84,18 @@ class SMSNotifier:
                 logger.error("SMS notification enabled but credentials are missing!")
                 self.enabled = False
             else:
-                logger.info(f"SMS Notifier initialized (Device: {self.device_id})")
+                # Validate environment variables are not placeholders
+                if (self.username and self.username.startswith('${')):
+                    logger.error(f"SMS username not loaded from environment: {self.username}")
+                    self.enabled = False
+                elif (self.password and self.password.startswith('${')):
+                    logger.error("SMS password not loaded from environment")
+                    self.enabled = False
+                elif (self.device_id and self.device_id.startswith('${')):
+                    logger.error(f"SMS device_id not loaded from environment: {self.device_id}")
+                    self.enabled = False
+                else:
+                    logger.info(f"SMS Notifier initialized (Device: {self.device_id})")
         else:
             logger.info("SMS Notifier disabled")
     
