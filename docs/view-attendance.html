@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance - Mabini High School</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .student-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .student-info h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .student-info p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #c33;
+        }
+        
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .attendance-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .attendance-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        
+        .attendance-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-present {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-late {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-absent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .no-records {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 0;
+            }
+            
+            .attendance-table {
+                font-size: 12px;
+            }
+            
+            .attendance-table th,
+            .attendance-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Student Attendance</h1>
+            <p>Mabini High School - Automated Attendance System</p>
+        </div>
+        
+        <div class="content">
+            <div id="studentInfo" class="student-info" style="display: none;">
+                <h2 id="studentName">Loading...</h2>
+                <p id="studentDetails">Student ID: <span id="studentId"></span></p>
+            </div>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading attendance records...</p>
+            </div>
+            
+            <div id="error" style="display: none;"></div>
+            
+            <div id="attendanceContainer"></div>
+        </div>
+        
+        <div class="footer">
+            <p>🔒 This is a secure view of your child's attendance records.</p>
+            <p>For questions, please contact the school office.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Get student ID from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentId = urlParams.get('student_id');
+        
+        // Supabase configuration (using public anon key - safe for client-side)
+        const SUPABASE_URL = 'https://ddblgwzylvwuucnpmtzi.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkYmxnd3p5bHZ3dXVjbnBtdHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDM4MjIsImV4cCI6MjA3OTM3OTgyMn0.EL7xhE0SbgvJ_R8ZAlkawOqRMi3yYMGFbGkqBMWMaJI';
+        
+        async function loadAttendance() {
+            if (!studentId) {
+                showError('No student ID provided. Please use the link from your SMS.');
+                return;
+            }
+            
+            document.getElementById('studentId').textContent = studentId;
+            
+            try {
+                // Fetch attendance records
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentId}&select=*&order=date.desc,time_in.desc&limit=30`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load attendance: ${response.status}`);
+                }
+                
+                const records = await response.json();
+                
+                // Fetch student info
+                const studentResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/students?student_number=eq.${studentId}&select=first_name,last_name,grade_level,section`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+                
+                if (studentResponse.ok) {
+                    const students = await studentResponse.json();
+                    if (students.length > 0) {
+                        const student = students[0];
+                        document.getElementById('studentName').textContent = 
+                            `${student.first_name} ${student.last_name}`;
+                        document.getElementById('studentDetails').innerHTML = 
+                            `Student ID: ${studentId} | Grade: ${student.grade_level} - ${student.section}`;
+                    }
+                }
+                
+                document.getElementById('studentInfo').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+                
+                displayAttendance(records);
+                
+            } catch (error) {
+                showError('Unable to load attendance records. Please try again later.');
+                console.error('Error:', error);
+            }
+        }
+        
+        function displayAttendance(records) {
+            const container = document.getElementById('attendanceContainer');
+            
+            if (records.length === 0) {
+                container.innerHTML = '<div class="no-records">No attendance records found.</div>';
+                return;
+            }
+            
+            let html = '<table class="attendance-table">';
+            html += '<thead><tr>';
+            html += '<th>Date</th>';
+            html += '<th>Time In</th>';
+            html += '<th>Time Out</th>';
+            html += '<th>Status</th>';
+            html += '</tr></thead>';
+            html += '<tbody>';
+            
+            records.forEach(record => {
+                const date = record.date || 'N/A';
+                const timeIn = record.time_in ? formatTime(record.time_in) : '-';
+                const timeOut = record.time_out ? formatTime(record.time_out) : '-';
+                const status = record.status || 'unknown';
+                
+                html += '<tr>';
+                html += `<td>${formatDate(date)}</td>`;
+                html += `<td>${timeIn}</td>`;
+                html += `<td>${timeOut}</td>`;
+                html += `<td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'N/A') return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+        
+        function formatTime(timeString) {
+            if (!timeString) return '-';
+            const date = new Date(timeString);
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            const errorDiv = document.getElementById('error');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `<strong>⚠️ Error</strong><br>${message}`;
+            errorDiv.style.display = 'block';
+        }
+        
+        // Load attendance when page loads
+        loadAttendance();
+    </script>
+</body>
+</html>
