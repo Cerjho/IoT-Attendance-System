@@ -29,6 +29,7 @@ class BuzzerController:
         self.gpio_available = False
         self.GPIO = None
         self._lock = threading.Lock()
+        self._cleaned_up = False
         
         if self.enabled:
             self._initialize_gpio()
@@ -121,8 +122,9 @@ class BuzzerController:
     
     def cleanup(self):
         """Clean up GPIO resources"""
-        if self.gpio_available and self.GPIO:
+        if self.gpio_available and self.GPIO and not self._cleaned_up:
             try:
+                self._cleaned_up = True
                 self.GPIO.output(self.gpio_pin, self.GPIO.LOW)
                 self.GPIO.cleanup(self.gpio_pin)
                 logger.info("Buzzer GPIO cleaned up")

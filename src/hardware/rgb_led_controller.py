@@ -40,6 +40,7 @@ class RGBLEDController:
         self.pwm_blue = None
         self._lock = threading.Lock()
         self._active_thread = None
+        self._cleaned_up = False
         
         if self.enabled:
             self._initialize_gpio()
@@ -279,8 +280,10 @@ class RGBLEDController:
     
     def cleanup(self):
         """Clean up GPIO resources"""
-        if self.gpio_available:
+        if self.gpio_available and not self._cleaned_up:
             try:
+                self._cleaned_up = True
+                
                 # Stop PWM
                 if self.pwm_red:
                     self.pwm_red.stop()
@@ -290,9 +293,9 @@ class RGBLEDController:
                     self.pwm_blue.stop()
                 
                 # Turn off LEDs
-                self.GPIO.output(self.gpio_pins['red'], GPIO.LOW)
-                self.GPIO.output(self.gpio_pins['green'], GPIO.LOW)
-                self.GPIO.output(self.gpio_pins['blue'], GPIO.LOW)
+                self.GPIO.output(self.gpio_pins['red'], self.GPIO.LOW)
+                self.GPIO.output(self.gpio_pins['green'], self.GPIO.LOW)
+                self.GPIO.output(self.gpio_pins['blue'], self.GPIO.LOW)
                 
                 # Cleanup GPIO
                 self.GPIO.cleanup([
