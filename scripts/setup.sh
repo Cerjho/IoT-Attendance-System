@@ -24,12 +24,12 @@ if command -v apt-get >/dev/null 2>&1; then
   fi
 fi
 
-# Python venv
-if [[ ! -d "venv" ]]; then
-  echo "\nCreating Python virtual environment..."
-  python3 -m venv venv
+# Python venv (.venv preferred)
+if [[ ! -d ".venv" ]]; then
+  echo "\nCreating Python virtual environment in .venv..."
+  python3 -m venv .venv
 fi
-source venv/bin/activate
+source .venv/bin/activate
 python -m pip install --upgrade pip
 
 # Install Python dependencies

@@ -11,14 +11,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Activate virtual environment
-if [ ! -d "venv" ]; then
+# Activate virtual environment (.venv preferred)
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
+elif [ -d "venv" ]; then
+    echo "ℹ️  Using legacy 'venv' directory (consider migrating to .venv)"
+    source venv/bin/activate
+else
     echo "❌ Virtual environment not found!"
     echo "Please run: bash scripts/setup.sh"
     exit 1
 fi
-
-source venv/bin/activate
 
 # Load environment variables from .env file
 if [ -f ".env" ]; then
