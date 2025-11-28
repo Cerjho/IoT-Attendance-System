@@ -122,11 +122,60 @@
         }
         
         .status-badge {
-            padding: 4px 12px;
-            border-radius: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
+        }
+        
+        .photo-thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .photo-thumbnail:hover {
+            transform: scale(1.1);
+        }
+        
+        .photo-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+        
+        .photo-modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .photo-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .photo-modal-close:hover {
+            color: #bbb;
         }
         
         .status-present {
@@ -195,6 +244,12 @@
             <div id="error" style="display: none;"></div>
             
             <div id="attendanceContainer"></div>
+        </div>
+        
+        <!-- Photo Modal -->
+        <div id="photoModal" class="photo-modal" onclick="closePhotoModal()">
+            <span class="photo-modal-close" onclick="closePhotoModal()">&times;</span>
+            <img class="photo-modal-content" id="modalPhoto">
         </div>
         
         <div class="footer">
@@ -289,6 +344,7 @@
             
             let html = '<table class="attendance-table">';
             html += '<thead><tr>';
+            html += '<th>Photo</th>';
             html += '<th>Date & Time</th>';
             html += '<th>Scan Type</th>';
             html += '<th>Status</th>';
@@ -300,8 +356,15 @@
                 const timestamp = record.timestamp || record.created_at || 'N/A';
                 const scanType = record.scan_type || record.type || 'check-in';
                 const status = record.status || 'present';
+                const photoUrl = record.photo_url || record.photo_path;
                 
                 html += '<tr>';
+                // Photo cell
+                if (photoUrl) {
+                    html += `<td><img src="${photoUrl}" class="photo-thumbnail" onclick="openPhotoModal('${photoUrl}')" alt="Attendance photo"></td>`;
+                } else {
+                    html += '<td>📷</td>';
+                }
                 html += `<td>${formatDateTime(timestamp)}</td>`;
                 html += `<td><span class="status-badge status-present">${scanType.replace('_', ' ').toUpperCase()}</span></td>`;
                 html += `<td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>`;
@@ -352,6 +415,24 @@
             errorDiv.innerHTML = `<strong>⚠️ Error</strong><br>${message}`;
             errorDiv.style.display = 'block';
         }
+        
+        function openPhotoModal(photoUrl) {
+            const modal = document.getElementById('photoModal');
+            const modalImg = document.getElementById('modalPhoto');
+            modal.style.display = 'block';
+            modalImg.src = photoUrl;
+        }
+        
+        function closePhotoModal() {
+            document.getElementById('photoModal').style.display = 'none';
+        }
+        
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
         
         // Load attendance when page loads
         loadAttendance();
