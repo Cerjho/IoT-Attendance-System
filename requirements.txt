@@ -19,7 +19,7 @@ pydantic==2.4.2
 
 # Cloud Sync
 supabase==2.3.0
-requests==2.31.0
+requests==2.32.3
 
 # GPIO/Hardware Control
 RPi.GPIO==0.7.1
