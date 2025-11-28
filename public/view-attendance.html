@@ -221,9 +221,40 @@
             document.getElementById('studentId').textContent = studentId;
             
             try {
-                // Fetch attendance records
+                // First, fetch student info to get UUID
+                const studentResponse = await fetch(
+                    `${SUPABASE_URL}/rest/v1/students?student_number=eq.${studentId}&select=id,first_name,last_name,grade_level,section`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+                
+                if (!studentResponse.ok) {
+                    throw new Error(`Student not found: ${studentResponse.status}`);
+                }
+                
+                const students = await studentResponse.json();
+                if (students.length === 0) {
+                    showError('Student not found. Please check the student ID.');
+                    return;
+                }
+                
+                const student = students[0];
+                const studentUUID = student.id;
+                
+                // Update student info display
+                document.getElementById('studentName').textContent = 
+                    `${student.first_name} ${student.last_name}`;
+                document.getElementById('studentDetails').innerHTML = 
+                    `Student ID: ${studentId} | Grade: ${student.grade_level} - ${student.section}`;
+                document.getElementById('studentInfo').style.display = 'block';
+                
+                // Now fetch attendance records using UUID
                 const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentId}&select=*&order=date.desc,time_in.desc&limit=30`,
+                    `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentUUID}&select=*&order=timestamp.desc&limit=30`,
                     {
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
@@ -238,29 +269,6 @@
                 
                 const records = await response.json();
                 
-                // Fetch student info
-                const studentResponse = await fetch(
-                    `${SUPABASE_URL}/rest/v1/students?student_number=eq.${studentId}&select=first_name,last_name,grade_level,section`,
-                    {
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                        }
-                    }
-                );
-                
-                if (studentResponse.ok) {
-                    const students = await studentResponse.json();
-                    if (students.length > 0) {
-                        const student = students[0];
-                        document.getElementById('studentName').textContent = 
-                            `${student.first_name} ${student.last_name}`;
-                        document.getElementById('studentDetails').innerHTML = 
-                            `Student ID: ${studentId} | Grade: ${student.grade_level} - ${student.section}`;
-                    }
-                }
-                
-                document.getElementById('studentInfo').style.display = 'block';
                 document.getElementById('loading').style.display = 'none';
                 
                 displayAttendance(records);
@@ -275,35 +283,46 @@
             const container = document.getElementById('attendanceContainer');
             
             if (records.length === 0) {
-                container.innerHTML = '<div class="no-records">No attendance records found.</div>';
+                container.innerHTML = '<div class="no-records">📅 No attendance records found yet.<br><br>Records will appear here once student checks in at school.</div>';
                 return;
             }
             
             let html = '<table class="attendance-table">';
             html += '<thead><tr>';
-            html += '<th>Date</th>';
-            html += '<th>Time In</th>';
-            html += '<th>Time Out</th>';
+            html += '<th>Date & Time</th>';
+            html += '<th>Scan Type</th>';
             html += '<th>Status</th>';
             html += '</tr></thead>';
             html += '<tbody>';
             
             records.forEach(record => {
-                const date = record.date || 'N/A';
-                const timeIn = record.time_in ? formatTime(record.time_in) : '-';
-                const timeOut = record.time_out ? formatTime(record.time_out) : '-';
-                const status = record.status || 'unknown';
+                // Handle timestamp field (from your attendance system)
+                const timestamp = record.timestamp || record.created_at || 'N/A';
+                const scanType = record.scan_type || record.type || 'check-in';
+                const status = record.status || 'present';
                 
                 html += '<tr>';
-                html += `<td>${formatDate(date)}</td>`;
-                html += `<td>${timeIn}</td>`;
-                html += `<td>${timeOut}</td>`;
+                html += `<td>${formatDateTime(timestamp)}</td>`;
+                html += `<td><span class="status-badge status-present">${scanType.replace('_', ' ').toUpperCase()}</span></td>`;
                 html += `<td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>`;
                 html += '</tr>';
             });
             
             html += '</tbody></table>';
             container.innerHTML = html;
+        }
+        
+        function formatDateTime(dateTimeString) {
+            if (!dateTimeString || dateTimeString === 'N/A') return 'N/A';
+            const date = new Date(dateTimeString);
+            return date.toLocaleString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
         }
         
         function formatDate(dateString) {
