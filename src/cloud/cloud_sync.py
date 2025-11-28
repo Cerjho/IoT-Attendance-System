@@ -178,7 +178,25 @@ class CloudSyncManager:
                 return None
 
             student_url = f"{self.supabase_url}/rest/v1/students?student_number=eq.{student_number}&select=id"
-            student_response = requests.get(student_url, headers=headers, timeout=5)
+            # Retry student lookup
+            student_response = None
+            for attempt in range(self.retry_attempts):
+                try:
+                    student_response = requests.get(student_url, headers=headers, timeout=5)
+                    if student_response.status_code == 200:
+                        break
+                    else:
+                        logger.warning(f"Student lookup failed (attempt {attempt+1}/{self.retry_attempts}) status={student_response.status_code}")
+                except Exception as e:
+                    logger.warning(f"Student lookup error attempt {attempt+1}: {e}")
+                if attempt + 1 < self.retry_attempts:
+                    asyncio.sleep(0)  # yield
+                    delay = self._get_retry_delay(attempt)
+                    try:
+                        import time as _time
+                        _time.sleep(delay)
+                    except Exception:
+                        pass
 
             if student_response.status_code != 200:
                 logger.error(
@@ -212,9 +230,23 @@ class CloudSyncManager:
                 attendance_data["time_out"] = cloud_data.get("time_out")
 
             # Step 3: Insert attendance record
-            response = requests.post(
-                attendance_url, headers=headers, json=attendance_data, timeout=10
-            )
+            response = None
+            for attempt in range(self.retry_attempts):
+                try:
+                    response = requests.post(attendance_url, headers=headers, json=attendance_data, timeout=10)
+                    if response.status_code in [200, 201]:
+                        break
+                    else:
+                        logger.warning(f"Attendance insert failed (attempt {attempt+1}/{self.retry_attempts}) status={response.status_code}")
+                except Exception as e:
+                    logger.warning(f"Attendance insert error attempt {attempt+1}: {e}")
+                if attempt + 1 < self.retry_attempts:
+                    delay = self._get_retry_delay(attempt)
+                    try:
+                        import time as _time
+                        _time.sleep(delay)
+                    except Exception:
+                        pass
 
             if response.status_code in [200, 201]:
                 data = response.json()

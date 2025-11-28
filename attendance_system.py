@@ -68,6 +68,13 @@ class IoTAttendanceSystem:
     def __init__(self, config_file: str = None):
         """Initialize the system"""
         self.config = load_config(config_file or "config/config.json")
+        # Validate configuration early
+        try:
+            validation_errors = self.config.validate()
+            if validation_errors:
+                logger.warning("System starting with configuration issues present")
+        except Exception as e:
+            logger.error(f"Config validation crashed: {e}")
 
         # Create directories
         os.makedirs("data/photos", exist_ok=True)

@@ -132,6 +132,70 @@ class ConfigLoader:
         """Get all configuration."""
         return self.config.copy()
 
+    def validate(self) -> Dict[str, str]:
+        """Validate configuration values and required sections.
+
+        Returns:
+            Dict mapping field paths to error messages (empty if valid)
+        """
+        errors: Dict[str, str] = {}
+
+        def require(path: str, value, condition=lambda v: v is not None):
+            if not condition(value):
+                errors[path] = "Missing or invalid value"
+
+        # Cloud config (only if enabled)
+        cloud_cfg = self.get("cloud", {}) or {}
+        if cloud_cfg.get("enabled", True):  # default assume enabled unless explicit false
+            require("cloud.url", cloud_cfg.get("url"), lambda v: isinstance(v, str) and v and not v.startswith("${"))
+            require("cloud.api_key", cloud_cfg.get("api_key"), lambda v: isinstance(v, str) and v and not v.startswith("${"))
+            require("cloud.device_id", cloud_cfg.get("device_id"), lambda v: isinstance(v, str) and v)
+
+        # SMS notifications (only if enabled)
+        sms_cfg = self.get("sms_notifications", {}) or {}
+        if sms_cfg.get("enabled", False):
+            require("sms_notifications.username", sms_cfg.get("username"), lambda v: isinstance(v, str) and v and not v.startswith("${"))
+            require("sms_notifications.password", sms_cfg.get("password"), lambda v: isinstance(v, str) and v and not v.startswith("${"))
+            require("sms_notifications.device_id", sms_cfg.get("device_id"), lambda v: isinstance(v, str) and v and not v.startswith("${"))
+            # Quiet hours format HH:MM
+            qh = sms_cfg.get("quiet_hours", {}) or {}
+            def valid_hhmm(v: str) -> bool:
+                if not isinstance(v, str) or len(v) != 5 or v[2] != ":":
+                    return False
+                try:
+                    h = int(v[:2]); m = int(v[3:]); return 0 <= h < 24 and 0 <= m < 60
+                except Exception:
+                    return False
+            if qh.get("enabled", True):
+                require("sms_notifications.quiet_hours.start", qh.get("start"), valid_hhmm)
+                require("sms_notifications.quiet_hours.end", qh.get("end"), valid_hhmm)
+            # Cooldown numeric
+            require("sms_notifications.duplicate_sms_cooldown_minutes", sms_cfg.get("duplicate_sms_cooldown_minutes"), lambda v: isinstance(v, (int, float)) and v >= 0)
+
+        # Camera resolution sanity
+        cam = self.get("camera", {}) or {}
+        if isinstance(cam.get("resolution", {}), dict):
+            width = cam.get("resolution", {}).get("width")
+            height = cam.get("resolution", {}).get("height")
+            if width is not None and (not isinstance(width, int) or width <= 0):
+                errors["camera.resolution.width"] = "Width must be positive integer"
+            if height is not None and (not isinstance(height, int) or height <= 0):
+                errors["camera.resolution.height"] = "Height must be positive integer"
+
+        # Logging level if present
+        log_cfg = self.get("logging", {}) or {}
+        if "level" in log_cfg and log_cfg["level"] not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+            errors["logging.level"] = "Invalid logging level"
+
+        if errors:
+            logger.error(f"Configuration validation failed: {len(errors)} issues")
+            for k, v in errors.items():
+                logger.error(f"  {k}: {v}")
+        else:
+            logger.info("Configuration validation passed")
+
+        return errors
+
     def save_to_file(self, filepath: str) -> bool:
         """
         Save current configuration to file.

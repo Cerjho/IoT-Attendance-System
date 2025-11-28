@@ -44,13 +44,19 @@ def format_phone_number(phone: str) -> str:
     return phone
 
 
+class TimeProvider:
+    """Provides current time. Abstracted for testability."""
+    def now(self) -> datetime:
+        return datetime.now()
+
+
 class SMSNotifier:
     """
     SMS notification service using Android SMS Gateway
     Cloud Server API: https://api.sms-gate.app/3rdparty/v1/message
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], time_provider: Any = None):
         """
         Initialize SMS Notifier
 
@@ -63,6 +69,8 @@ class SMSNotifier:
                 - api_url: API endpoint URL (optional, defaults to cloud server)
                 - message_template: SMS message template (optional)
         """
+        # Time provider for easier testing of cooldown & quiet hours
+        self.time_provider = time_provider or TimeProvider()
         self.enabled = config.get("enabled", False)
         self.username = config.get("username")
         self.password = config.get("password")
@@ -156,7 +164,7 @@ class SMSNotifier:
         if not self.quiet_hours_enabled:
             return False
 
-        now = datetime.now().time()
+        now = self.time_provider.now().time()
         start = datetime.strptime(self.quiet_start, "%H:%M").time()
         end = datetime.strptime(self.quiet_end, "%H:%M").time()
 
@@ -176,13 +184,13 @@ class SMSNotifier:
         last_sent = self.recent_notifications.get(key)
 
         if last_sent:
-            elapsed = (datetime.now() - last_sent).total_seconds() / 60
+            elapsed = (self.time_provider.now() - last_sent).total_seconds() / 60
             if elapsed < self.cooldown_minutes:
                 logger.debug(f"SMS cooldown active for {key} ({elapsed:.1f} mins ago)")
                 return False
 
         # Update last sent time
-        self.recent_notifications[key] = datetime.now()
+        self.recent_notifications[key] = self.time_provider.now()
         return True
 
     def send_attendance_notification(
@@ -232,7 +240,7 @@ class SMSNotifier:
 
         # Use current time if not provided
         if timestamp is None:
-            timestamp = datetime.now()
+            timestamp = self.time_provider.now()
 
         # Select appropriate message template based on status and scan type
         if status == "late" and minutes_late > 0:
@@ -293,39 +301,53 @@ class SMSNotifier:
             # Build URL with device ID
             url = f"{self.api_url}?deviceId={self.device_id}"
 
-            # Make API request with Basic Auth
-            response = requests.post(
-                url,
-                json=payload,
-                headers={
-                    "Authorization": f"Basic {b64_credentials}",
-                    "Content-Type": "application/json",
-                },
-                timeout=10,
-            )
+            # Retry strategy
+            attempts = 3
+            delay = 2
+            last_err = None
+            for i in range(attempts):
+                try:
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        headers={
+                            "Authorization": f"Basic {b64_credentials}",
+                            "Content-Type": "application/json",
+                        },
+                        timeout=10,
+                    )
+                    if response.status_code in [200, 202]:
+                        response_data = response.json()
+                        message_id = response_data.get("id", "unknown")
+                        logger.info(
+                            f"SMS sent successfully to {phone_number} (Message ID: {message_id})"
+                        )
+                        return True
+                    else:
+                        last_err = f"status={response.status_code} body={response.text}"
+                        logger.warning(
+                            f"SMS send failed attempt {i+1}/{attempts}: {last_err}"
+                        )
+                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                    last_err = str(e)
+                    logger.warning(
+                        f"SMS send error attempt {i+1}/{attempts}: {last_err}"
+                    )
+                except Exception as e:
+                    last_err = str(e)
+                    logger.warning(
+                        f"SMS unexpected error attempt {i+1}/{attempts}: {last_err}"
+                    )
+                if i + 1 < attempts:
+                    try:
+                        import time as _time
+                        _time.sleep(delay)
+                        delay = min(delay * 2, 10)
+                    except Exception:
+                        pass
 
-            # Check response
-            if response.status_code in [200, 202]:  # Success or Accepted
-                response_data = response.json()
-                message_id = response_data.get("id", "unknown")
-                logger.info(
-                    f"SMS sent successfully to {phone_number} (Message ID: {message_id})"
-                )
-                return True
-            else:
-                logger.error(
-                    f"Failed to send SMS. Status: {response.status_code}, Response: {response.text}"
-                )
-                return False
-
-        except requests.exceptions.Timeout:
-            logger.error(f"SMS API request timeout for {phone_number}")
+            logger.error(f"Failed to send SMS after retries: {last_err}")
             return False
-
-        except requests.exceptions.ConnectionError as e:
-            logger.error(f"SMS API connection error: {str(e)}")
-            return False
-
         except Exception as e:
             logger.error(f"Error sending SMS: {str(e)}")
             return False

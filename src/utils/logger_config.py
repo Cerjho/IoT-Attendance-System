@@ -5,6 +5,7 @@ Sets up logging for the IoT attendance system
 
 import logging
 import logging.handlers
+import json
 import os
 from datetime import datetime
 
@@ -56,4 +57,36 @@ def setup_logger(
     console_handler.setFormatter(simple_formatter)
     logger.addHandler(console_handler)
 
+    return logger
+
+
+class JSONLogFormatter(logging.Formatter):
+    """Simple JSON formatter for structured logs."""
+    def format(self, record: logging.LogRecord) -> str:
+        base = {
+            "ts": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "level": record.levelname,
+            "logger": record.name,
+            "msg": record.getMessage(),
+            "file": record.filename,
+            "line": record.lineno,
+        }
+        if record.exc_info:
+            base["exception"] = self.formatException(record.exc_info)
+        return json.dumps(base, ensure_ascii=False)
+
+
+def get_json_logger(name: str, log_dir: str = "data/logs", level=logging.INFO) -> logging.Logger:
+    """Get a logger configured to emit JSON lines (in addition to existing handlers if any)."""
+    os.makedirs(log_dir, exist_ok=True)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    log_filename = os.path.join(log_dir, f"attendance_json_{datetime.now().strftime('%Y%m%d')}.log")
+    json_handler = logging.handlers.RotatingFileHandler(log_filename, maxBytes=5 * 1024 * 1024, backupCount=3)
+    json_handler.setFormatter(JSONLogFormatter())
+    json_handler.setLevel(level)
+    # Avoid duplicate handler addition
+    if not any(isinstance(h, logging.handlers.RotatingFileHandler) and getattr(h, 'baseFilename', '').endswith('attendance_json_'+datetime.now().strftime('%Y%m%d')+'.log') for h in logger.handlers):
+        logger.addHandler(json_handler)
     return logger
