@@ -52,7 +52,7 @@
             background: #f8f9fa;
             padding: 20px;
             border-radius: 12px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-left: 4px solid #667eea;
         }
         
@@ -65,6 +65,61 @@
         .student-info p {
             color: #666;
             font-size: 14px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
         
         .loading {
@@ -236,6 +291,35 @@
                 <p id="studentDetails">Student ID: <span id="studentId"></span></p>
             </div>
             
+            <!-- Statistics Dashboard -->
+            <div id="statsContainer" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalDays">0</div>
+                        <div class="stat-label">Total Days</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="presentDays">0</div>
+                        <div class="stat-label">Present</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="lateDays">0</div>
+                        <div class="stat-label">Late</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="attendanceRate">0%</div>
+                        <div class="stat-label">Attendance Rate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filter Buttons -->
+            <div id="filtersContainer" style="display: none;" class="filters">
+                <button class="filter-btn active" onclick="filterRecords('all')">All Time</button>
+                <button class="filter-btn" onclick="filterRecords('week')">This Week</button>
+                <button class="filter-btn" onclick="filterRecords('month')">This Month</button>
+            </div>
+            
             <div id="loading" class="loading">
                 <div class="spinner"></div>
                 <p>Loading attendance records...</p>
@@ -328,12 +412,54 @@
                 
                 document.getElementById('loading').style.display = 'none';
                 
+                // Store records globally for filtering
+                window.allRecords = records;
+                
+                // Calculate and display statistics
+                calculateStats(records);
+                
+                // Show filters
+                document.getElementById('filtersContainer').style.display = 'flex';
+                
                 displayAttendance(records);
                 
             } catch (error) {
                 showError('Unable to load attendance records. Please try again later.');
                 console.error('Error:', error);
             }
+        }
+        
+        function calculateStats(records) {
+            const totalDays = records.length;
+            const presentDays = records.filter(r => r.status === 'present').length;
+            const lateDays = records.filter(r => r.status === 'late').length;
+            const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+            
+            document.getElementById('totalDays').textContent = totalDays;
+            document.getElementById('presentDays').textContent = presentDays;
+            document.getElementById('lateDays').textContent = lateDays;
+            document.getElementById('attendanceRate').textContent = attendanceRate + '%';
+            document.getElementById('statsContainer').style.display = 'block';
+        }
+        
+        function filterRecords(period) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const now = new Date();
+            let filtered = window.allRecords;
+            
+            if (period === 'week') {
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                filtered = window.allRecords.filter(r => new Date(r.created_at) >= weekAgo);
+            } else if (period === 'month') {
+                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                filtered = window.allRecords.filter(r => new Date(r.created_at) >= monthAgo);
+            }
+            
+            calculateStats(filtered);
+            displayAttendance(filtered);
         }
         
         function displayAttendance(records) {
@@ -344,11 +470,12 @@
                 return;
             }
             
-            let html = '<table class="attendance-table">';
+            let html = '<div style="overflow-x: auto;"><table class="attendance-table">';
             html += '<thead><tr>';
             html += '<th>Photo</th>';
-            html += '<th>Date & Time</th>';
-            html += '<th>Scan Type</th>';
+            html += '<th>Date</th>';
+            html += '<th>Time In</th>';
+            html += '<th>Time Out</th>';
             html += '<th>Status</th>';
             html += '</tr></thead>';
             html += '<tbody>';
@@ -356,9 +483,11 @@
             records.forEach(record => {
                 // Handle timestamp field (from your attendance system)
                 const timestamp = record.timestamp || record.created_at || 'N/A';
-                const scanType = record.scan_type || record.type || 'check-in';
                 const status = record.status || 'present';
                 const photoUrl = record.photo_url || record.photo_path;
+                const timeIn = record.time_in || formatTime(timestamp);
+                const timeOut = record.time_out || '-';
+                const dateOnly = formatDateOnly(timestamp);
                 
                 html += '<tr>';
                 // Photo cell
@@ -367,14 +496,35 @@
                 } else {
                     html += '<td>📷</td>';
                 }
-                html += `<td>${formatDateTime(timestamp)}</td>`;
-                html += `<td><span class="status-badge status-present">${scanType.replace('_', ' ').toUpperCase()}</span></td>`;
-                html += `<td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>`;
+                html += `<td>${dateOnly}</td>`;
+                html += `<td><span class="status-badge status-present">${timeIn}</span></td>`;
+                html += `<td>${timeOut !== '-' ? `<span class="status-badge status-present">${timeOut}</span>` : timeOut}</td>`;
+                html += `<td><span class="status-badge status-${status.toLowerCase()}">${status.toUpperCase()}</span></td>`;
                 html += '</tr>';
             });
             
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             container.innerHTML = html;
+        }
+        
+        function formatTime(dateTimeString) {
+            if (!dateTimeString || dateTimeString === 'N/A') return 'N/A';
+            const date = new Date(dateTimeString);
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
+        function formatDateOnly(dateTimeString) {
+            if (!dateTimeString || dateTimeString === 'N/A') return 'N/A';
+            const date = new Date(dateTimeString);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
         }
         
         function formatDateTime(dateTimeString) {
