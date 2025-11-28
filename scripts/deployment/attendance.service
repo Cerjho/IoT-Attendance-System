@@ -8,6 +8,7 @@ Type=simple
 User=iot
 WorkingDirectory=/home/iot/attendance-system
 Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/home/iot/attendance-system/.env
 ExecStart=/bin/bash -lc '/home/iot/attendance-system/scripts/start_attendance.sh --headless'
 Restart=on-failure
 RestartSec=10
