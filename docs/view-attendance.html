@@ -304,7 +304,7 @@
                 document.getElementById('studentName').textContent = 
                     `${student.first_name} ${student.last_name}`;
                 document.getElementById('studentDetails').innerHTML = 
-                    `Student ID: ${studentId} | Grade: ${student.grade_level} - ${student.section}`;
+                    `Student ID: ${studentId} | ${student.grade_level} - Section ${student.section}`;
                 document.getElementById('studentInfo').style.display = 'block';
                 
                 // Now fetch attendance records using UUID
