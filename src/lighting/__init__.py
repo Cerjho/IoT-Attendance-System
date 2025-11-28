@@ -2,4 +2,4 @@
 from .analyzer import LightingAnalyzer
 from .compensator import LightingCompensator
 
-__all__ = ['LightingAnalyzer', 'LightingCompensator']
+__all__ = ["LightingAnalyzer", "LightingCompensator"]

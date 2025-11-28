@@ -5,10 +5,10 @@
 ```
 Component       GPIO Pin    Resistor    Connection
 ─────────────────────────────────────────────────────────
-Buzzer          23          1kΩ         GPIO → R → Buzzer(+) → Buzzer(-) → GND
-RGB LED (Red)   22          1kΩ         GPIO → R → Anode
-RGB LED (Green) 27          1kΩ         GPIO → R → Anode
-RGB LED (Blue)  17          1kΩ         GPIO → R → Anode
+Buzzer          23          220kΩ         GPIO → R → Buzzer(+) → Buzzer(-) → GND
+RGB LED (Red)   22          220kΩ         GPIO → R → Anode
+RGB LED (Green) 27          220kΩ         GPIO → R → Anode
+RGB LED (Blue)  17          220kΩ         GPIO → R → Anode
 Common Cathode  -           -           → GND
 ```
 
@@ -76,7 +76,7 @@ Edit `config/config.json`:
 "rgb_led": {
   "brightness": 100,          // 0-100%
   "fade_duration_ms": 500,    // Fade speed
-  "hold_duration_ms": 2000,   // Display time
+  "hold_duration_ms": 1000,   // Display time
   "colors": {
     "success": [0, 255, 0]    // Change colors [R, G, B]
   }
