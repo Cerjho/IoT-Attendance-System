@@ -265,16 +265,70 @@
         @media (max-width: 600px) {
             .container {
                 border-radius: 0;
+                margin: 0;
+            }
+            
+            .header {
+                padding: 20px 15px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .stat-card {
+                padding: 15px;
+            }
+            
+            .stat-number {
+                font-size: 24px;
+            }
+            
+            .filters {
+                gap: 8px;
+            }
+            
+            .filter-btn {
+                padding: 8px 15px;
+                font-size: 13px;
             }
             
             .attendance-table {
-                font-size: 12px;
+                font-size: 11px;
             }
             
             .attendance-table th,
             .attendance-table td {
                 padding: 8px 4px;
             }
+            
+            .photo-thumbnail {
+                width: 45px;
+                height: 45px;
+            }
+            
+            .status-badge {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+        }
+        
+        /* Loading animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .stat-card, .filter-btn, .attendance-table tr {
+            animation: fadeIn 0.3s ease-out;
         }
     </style>
 </head>
@@ -322,7 +376,8 @@
             
             <div id="loading" class="loading">
                 <div class="spinner"></div>
-                <p>Loading attendance records...</p>
+                <p id="loadingText">Loading attendance records...</p>
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">This may take a few seconds</p>
             </div>
             
             <div id="error" style="display: none;"></div>
@@ -424,16 +479,33 @@
                 displayAttendance(records);
                 
             } catch (error) {
-                showError('Unable to load attendance records. Please try again later.');
-                console.error('Error:', error);
+                console.error('Error loading attendance:', error);
+                let errorMessage = 'Unable to load attendance records. ';
+                
+                if (!navigator.onLine) {
+                    errorMessage += 'Please check your internet connection.';
+                } else if (error.message.includes('Student not found')) {
+                    errorMessage = 'Student record not found. Please contact the school office.';
+                } else if (error.message.includes('Failed to load attendance')) {
+                    errorMessage += 'The server may be temporarily unavailable.';
+                } else {
+                    errorMessage += 'Please try again later.';
+                }
+                
+                showError(errorMessage, true);
             }
         }
         
         function calculateStats(records) {
+            if (!records || records.length === 0) {
+                document.getElementById('statsContainer').style.display = 'none';
+                return;
+            }
+            
             const totalDays = records.length;
-            const presentDays = records.filter(r => r.status === 'present').length;
-            const lateDays = records.filter(r => r.status === 'late').length;
-            const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+            const presentDays = records.filter(r => (r.status || '').toLowerCase() === 'present').length;
+            const lateDays = records.filter(r => (r.status || '').toLowerCase() === 'late').length;
+            const attendanceRate = totalDays > 0 ? Math.round(((presentDays + lateDays) / totalDays) * 100) : 0;
             
             document.getElementById('totalDays').textContent = totalDays;
             document.getElementById('presentDays').textContent = presentDays;
@@ -447,15 +519,25 @@
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             
+            if (!window.allRecords || window.allRecords.length === 0) {
+                return;
+            }
+            
             const now = new Date();
             let filtered = window.allRecords;
             
             if (period === 'week') {
                 const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                filtered = window.allRecords.filter(r => new Date(r.created_at) >= weekAgo);
+                filtered = window.allRecords.filter(r => {
+                    const recordDate = new Date(r.created_at || r.timestamp || r.date);
+                    return recordDate >= weekAgo && !isNaN(recordDate);
+                });
             } else if (period === 'month') {
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                filtered = window.allRecords.filter(r => new Date(r.created_at) >= monthAgo);
+                filtered = window.allRecords.filter(r => {
+                    const recordDate = new Date(r.created_at || r.timestamp || r.date);
+                    return recordDate >= monthAgo && !isNaN(recordDate);
+                });
             }
             
             calculateStats(filtered);
@@ -482,23 +564,31 @@
             
             records.forEach(record => {
                 // Handle timestamp field (from your attendance system)
-                const timestamp = record.timestamp || record.created_at || 'N/A';
+                const timestamp = record.timestamp || record.created_at || record.date || 'N/A';
                 const status = record.status || 'present';
                 const photoUrl = record.photo_url || record.photo_path;
-                const timeIn = record.time_in || formatTime(timestamp);
-                const timeOut = record.time_out || '-';
+                
+                // Handle time fields
+                let timeIn = record.time_in;
+                if (!timeIn && timestamp !== 'N/A') {
+                    timeIn = formatTime(timestamp);
+                }
+                
+                let timeOut = record.time_out || '-';
                 const dateOnly = formatDateOnly(timestamp);
                 
                 html += '<tr>';
                 // Photo cell
-                if (photoUrl) {
-                    html += `<td><img src="${photoUrl}" class="photo-thumbnail" onclick="openPhotoModal('${photoUrl}')" alt="Attendance photo"></td>`;
+                if (photoUrl && photoUrl !== '') {
+                    // Escape single quotes in URL for onclick
+                    const escapedUrl = photoUrl.replace(/'/g, "\\'");
+                    html += `<td><img src="${photoUrl}" class="photo-thumbnail" onclick="openPhotoModal('${escapedUrl}')" alt="Attendance photo" loading="lazy"></td>`;
                 } else {
-                    html += '<td>📷</td>';
+                    html += '<td><div style="font-size:24px;">📷</div></td>';
                 }
                 html += `<td>${dateOnly}</td>`;
-                html += `<td><span class="status-badge status-present">${timeIn}</span></td>`;
-                html += `<td>${timeOut !== '-' ? `<span class="status-badge status-present">${timeOut}</span>` : timeOut}</td>`;
+                html += `<td><span class="status-badge status-present">${timeIn || '-'}</span></td>`;
+                html += `<td>${timeOut !== '-' ? `<span class="status-badge status-present">${timeOut}</span>` : '<span style="color:#999;">-</span>'}</td>`;
                 html += `<td><span class="status-badge status-${status.toLowerCase()}">${status.toUpperCase()}</span></td>`;
                 html += '</tr>';
             });
@@ -560,23 +650,41 @@
             });
         }
         
-        function showError(message) {
+        function showError(message, canRetry = false) {
             document.getElementById('loading').style.display = 'none';
             const errorDiv = document.getElementById('error');
             errorDiv.className = 'error';
-            errorDiv.innerHTML = `<strong>⚠️ Error</strong><br>${message}`;
+            
+            let html = `<strong>⚠️ Error</strong><br>${message}`;
+            if (canRetry) {
+                html += `<br><br><button onclick="location.reload()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Try Again</button>`;
+            }
+            
+            errorDiv.innerHTML = html;
             errorDiv.style.display = 'block';
         }
         
         function openPhotoModal(photoUrl) {
+            if (!photoUrl) return;
+            
             const modal = document.getElementById('photoModal');
             const modalImg = document.getElementById('modalPhoto');
-            modal.style.display = 'block';
-            modalImg.src = photoUrl;
+            
+            if (modal && modalImg) {
+                modal.style.display = 'block';
+                modalImg.src = photoUrl;
+                modalImg.onerror = function() {
+                    modalImg.alt = 'Photo could not be loaded';
+                    console.error('Failed to load photo:', photoUrl);
+                };
+            }
         }
         
         function closePhotoModal() {
-            document.getElementById('photoModal').style.display = 'none';
+            const modal = document.getElementById('photoModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
         }
         
         // Close modal with ESC key
