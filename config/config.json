@@ -153,11 +153,38 @@
     "password": "${SMS_PASSWORD}",
     "device_id": "${SMS_DEVICE_ID}",
     "api_url": "${SMS_API_URL}",
-    "login_message_template": "📚 ATTENDANCE ALERT 📚\n\nGood day, Parent/Guardian!\n\nYour child {student_name} (Student ID: {student_id}) has successfully CHECKED IN to school.\n\n⏰ Time: {time}\n📅 Date: {date}\n✅ Status: Present\n\n📊 View full attendance:\n{attendance_link}\n\nThank you for your continued support!\n\n- Mabini High School\n  Automated Attendance System",
-    "logout_message_template": "🏫 DEPARTURE NOTIFICATION 🏫\n\nGood day, Parent/Guardian!\n\nYour child {student_name} (Student ID: {student_id}) has successfully CHECKED OUT from school.\n\n⏰ Time: {time}\n📅 Date: {date}\n✅ Status: Departed Safely\n\n📊 View full attendance:\n{attendance_link}\n\nThank you and have a great evening!\n\n- Mabini High School\n  Automated Attendance System",
+    "login_message_template": "📚 MABINI HIGH SCHOOL\n\n✅ CHECK-IN: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
+    "logout_message_template": "📚 MABINI HIGH SCHOOL\n\n🏁 CHECK-OUT: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
+    "late_arrival_template": "⚠️ LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n📅 {date}\n\nView: {attendance_link}\n\n- Mabini High School",
+    "no_checkout_template": "⚠️ NO CHECK-OUT\n\n{student_name} did not check out today.\nLast seen: {last_checkin_time}\n\nPlease verify.\n\nView: {attendance_link}\n\n- Mabini High School",
+    "absence_alert_template": "❗ ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}\n\n- Mabini High School",
+    "weekly_summary_template": "📊 WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}\n\n- Mabini High School",
+    "monthly_summary_template": "📊 MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}\n\n- Mabini High School",
     "attendance_view_url": "https://cerjho.github.io/IoT-Attendance-System/view-attendance.html?student_id={student_id}",
     "send_on_capture": true,
+    "send_late_alerts": true,
+    "send_absence_alerts": false,
+    "send_no_checkout_alerts": false,
+    "send_weekly_summary": false,
+    "send_monthly_summary": false,
+    "notification_preferences": {
+      "check_in": true,
+      "check_out": true,
+      "late_arrival": true,
+      "absence": false,
+      "no_checkout": false,
+      "weekly_summary": false,
+      "monthly_summary": false
+    },
+    "quiet_hours": {
+      "enabled": true,
+      "start": "22:00",
+      "end": "06:00"
+    },
+    "duplicate_sms_cooldown_minutes": 5,
     "retry_on_failure": true,
-    "retry_attempts": 3
+    "retry_attempts": 3,
+    "include_unsubscribe": true,
+    "unsubscribe_text": "\n\nReply STOP to unsubscribe"
   }
 }
