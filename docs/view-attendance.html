@@ -254,7 +254,7 @@
                 
                 // Now fetch attendance records using UUID
                 const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentUUID}&select=*&order=timestamp.desc&limit=30`,
+                    `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentUUID}&select=*&order=created_at.desc&limit=30`,
                     {
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
