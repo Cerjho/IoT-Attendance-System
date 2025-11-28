@@ -303,8 +303,10 @@
                 // Update student info display
                 document.getElementById('studentName').textContent = 
                     `${student.first_name} ${student.last_name}`;
+                const gradeNum = student.grade_level ? student.grade_level.replace(/Grade\s*/i, '') : '';
+                const sectionLetter = student.section ? student.section.replace(/Section\s*/i, '') : '';
                 document.getElementById('studentDetails').innerHTML = 
-                    `Student ID: ${studentId} | Grade: ${student.grade_level.replace('Grade ', '')} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Section: ${student.section}`;
+                    `Student ID: ${studentId} | Grade: ${gradeNum} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Section: ${sectionLetter}`;
                 document.getElementById('studentInfo').style.display = 'block';
                 
                 // Now fetch attendance records using UUID
