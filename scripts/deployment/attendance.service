@@ -1,0 +1,16 @@
+[Unit]
+Description=IoT Attendance System
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iot
+WorkingDirectory=/home/iot/attendance-system
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/bin/bash -lc '/home/iot/attendance-system/scripts/start_attendance.sh --headless'
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
