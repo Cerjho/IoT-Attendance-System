@@ -39,7 +39,7 @@ ORDER BY ordinal_position;
 
 Run the test script again:
 ```bash
-python3 test_upload_attendance.py data/photos/test_attendance_221566.jpg
+python3 utils/test-scripts/test_upload_attendance.py data/photos/test_attendance_221566.jpg
 ```
 
 This will:

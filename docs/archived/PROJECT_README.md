@@ -69,7 +69,7 @@ python manage_parents.py --import students.csv
 ### 3. Generate QR Codes
 ```bash
 python generate_qr.py
-# QR codes created in qr_codes/ directory
+# QR codes created in data/qr_codes/ directory
 # Print and distribute to students
 ```
 
@@ -347,7 +347,7 @@ attendance-system/
 │   └── attendance.db            # SQLite database
 │
 ├── photos/                       # Captured images
-├── qr_codes/                     # Generated QR codes
+├── data/qr_codes/                # Generated QR codes
 ├── logs/                         # System logs
 │
 └── Documentation/

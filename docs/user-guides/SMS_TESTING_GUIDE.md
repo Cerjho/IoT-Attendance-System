@@ -4,7 +4,7 @@
 Comprehensive SMS testing script to test all 7 templates and new enhancements.
 
 ## Test Script
-**File:** `test_all_sms_templates.py`
+**File:** `tests/test_all_sms_templates.py`
 
 ## Features Tested
 ✅ **7 SMS Templates:**
@@ -32,7 +32,7 @@ phone = '09123456789'  # Your phone number here
 ### 2. Run the Script
 ```bash
 cd /home/iot/attendance-system
-python3 test_all_sms_templates.py
+pytest -q tests/test_all_sms_templates.py
 ```
 
 ### 3. Select Test Option

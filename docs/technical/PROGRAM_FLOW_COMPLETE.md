@@ -418,7 +418,7 @@ projects/
 │   ├── attendance_2021001_20251124_143022.jpg
 │   └── ... (deleted after cloud sync confirmed)
 │
-├── qr_codes/
+├── data/qr_codes/
 │   ├── qr_code_STU001.png
 │   ├── qr_code_STU002.png
 │   └── ... (for printing)

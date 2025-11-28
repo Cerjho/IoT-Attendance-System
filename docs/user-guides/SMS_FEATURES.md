@@ -218,13 +218,13 @@ In `config/config.json`:
 
 ### Test SMS Notification
 ```bash
-python3 test_sms_message.py
+python3 utils/test-scripts/test_sms_message.py
 ```
 
 ### Test with Real Student
 ```bash
 # Uses student 221566 (John Paolo Gonzales)
-python3 test_sms_message.py --student 221566
+python3 utils/test-scripts/test_sms_message.py --student 221566
 ```
 
 ### Verify Configuration
@@ -294,6 +294,6 @@ Potential additions (not yet implemented):
 For issues or questions:
 - Check logs: `data/logs/`
 - Review config: `config/config.json`
-- Test connection: `python3 test_sms_message.py`
+- Test connection: `python3 utils/test-scripts/test_sms_message.py`
 
 **School Contact**: [Your School Office Number]

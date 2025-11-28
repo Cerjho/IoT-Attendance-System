@@ -45,7 +45,7 @@ attendance-system/
 │   ├── photos/               # Captured photos
 │   └── logs/                 # System logs
 │
-├── qr_codes/                  # Generated QR codes
+├── data/qr_codes/             # Generated QR codes
 │
 ├── venv/                      # Python virtual environment
 │
@@ -119,4 +119,4 @@ attendance-system/
 - `data/attendance.db` - Local attendance records
 - `data/photos/` - Captured student photos
 - `logs/` - Application logs
-- `qr_codes/` - Student QR codes
+- `data/qr_codes/` - Student QR codes
