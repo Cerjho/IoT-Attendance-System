@@ -177,9 +177,15 @@ class ConfigLoader:
         if isinstance(cam.get("resolution", {}), dict):
             width = cam.get("resolution", {}).get("width")
             height = cam.get("resolution", {}).get("height")
-            if width is not None and (not isinstance(width, int) or width <= 0):
+            def _is_pos_int(v):
+                if isinstance(v, int):
+                    return v > 0
+                if isinstance(v, str) and v.isdigit():
+                    return int(v) > 0
+                return False
+            if width is not None and not _is_pos_int(width):
                 errors["camera.resolution.width"] = "Width must be positive integer"
-            if height is not None and (not isinstance(height, int) or height <= 0):
+            if height is not None and not _is_pos_int(height):
                 errors["camera.resolution.height"] = "Height must be positive integer"
 
         # Logging level if present
