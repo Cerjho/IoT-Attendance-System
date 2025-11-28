@@ -46,7 +46,7 @@
   },
   "logging": {
     "level": "INFO",
-    "log_dir": "logs"
+    "log_dir": "data/logs"
   },
   "school_schedule": {
     "morning_class": {
@@ -80,6 +80,7 @@
     "device_id": "${DEVICE_ID}",
     "sync_interval": 60,
     "sync_on_capture": true,
+    "cleanup_photos_after_sync": true,
     "offline_queue_size": 1000,
     "retry_attempts": 3,
     "retry_delay": 30,

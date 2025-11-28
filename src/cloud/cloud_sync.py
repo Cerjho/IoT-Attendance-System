@@ -312,6 +312,18 @@ class CloudSyncManager:
                     attendance_data.get("id"), cloud_record_id
                 )
 
+                # Optionally delete local photo after successful sync
+                try:
+                    if (
+                        self.config.get("cleanup_photos_after_sync", True)
+                        and photo_path
+                        and os.path.exists(photo_path)
+                    ):
+                        os.remove(photo_path)
+                        logger.debug(f"Deleted local photo after sync: {photo_path}")
+                except Exception as _e:
+                    logger.warning(f"Failed to delete local photo {photo_path}: {_e}")
+
                 self._sync_count += 1
                 logger.info(
                     f"Synced attendance ID {attendance_data.get('id')} to cloud (cloud ID: {cloud_record_id})"
@@ -427,6 +439,22 @@ class CloudSyncManager:
 
                         # Remove from queue
                         self.sync_queue.remove_from_queue(queue_id)
+
+                        # Optionally delete local photo after successful sync
+                        try:
+                            if (
+                                self.config.get("cleanup_photos_after_sync", True)
+                                and photo_path
+                                and os.path.exists(photo_path)
+                            ):
+                                os.remove(photo_path)
+                                logger.debug(
+                                    f"Deleted local photo after sync: {photo_path}"
+                                )
+                        except Exception as _e:
+                            logger.warning(
+                                f"Failed to delete local photo {photo_path}: {_e}"
+                            )
 
                         succeeded += 1
                         self._sync_count += 1
@@ -546,6 +574,21 @@ class CloudSyncManager:
                     self.sync_queue.mark_attendance_synced(
                         attendance_data.get("id"), cloud_record_id
                     )
+                    # Optionally delete local photo after successful sync
+                    try:
+                        if (
+                            self.config.get("cleanup_photos_after_sync", True)
+                            and photo_path
+                            and os.path.exists(photo_path)
+                        ):
+                            os.remove(photo_path)
+                            logger.debug(
+                                f"Deleted local photo after sync: {photo_path}"
+                            )
+                    except Exception as _e:
+                        logger.warning(
+                            f"Failed to delete local photo {photo_path}: {_e}"
+                        )
                     succeeded += 1
                     self._sync_count += 1
                 else:

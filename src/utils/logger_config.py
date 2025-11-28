@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 def setup_logger(
-    name: str, log_dir: str = "logs", level=logging.INFO
+    name: str, log_dir: str = "data/logs", level=logging.INFO
 ) -> logging.Logger:
     """
     Setup logger with file and console handlers.

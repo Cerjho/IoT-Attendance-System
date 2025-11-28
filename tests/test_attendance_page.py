@@ -3,6 +3,7 @@
 Test attendance page functionality
 """
 import sys
+import pytest
 
 import requests
 
@@ -20,9 +21,11 @@ def test_page_loads():
 
         assert response.status_code == 200, f"Status code: {response.status_code}"
         print("   ✅ PASS - Page loads successfully")
+    except requests.exceptions.RequestException as e:
+        pytest.skip(f"Network unavailable or page unreachable: {e}")
     except Exception as e:
         print(f"   ❌ FAIL - Error: {e}")
-        return False
+        assert False, f"Page load error: {e}"
 
 
 def test_page_content():
@@ -50,9 +53,11 @@ def test_page_content():
         assert not missing, f"Missing elements: {', '.join(missing)}"
         print("   ✅ PASS - All required elements present")
 
+    except requests.exceptions.RequestException as e:
+        pytest.skip(f"Network unavailable or page unreachable: {e}")
     except Exception as e:
         print(f"   ❌ FAIL - Error: {e}")
-        return False
+        assert False, f"Content check error: {e}"
 
 
 def test_javascript_present():
@@ -80,9 +85,11 @@ def test_javascript_present():
         assert not missing, f"Missing functions: {', '.join(missing)}"
         print("   ✅ PASS - All JavaScript functions present")
 
+    except requests.exceptions.RequestException as e:
+        pytest.skip(f"Network unavailable or page unreachable: {e}")
     except Exception as e:
         print(f"   ❌ FAIL - Error: {e}")
-        return False
+        assert False, f"JavaScript presence error: {e}"
 
 
 def test_mobile_responsive():
@@ -96,9 +103,11 @@ def test_mobile_responsive():
         assert "@media (max-width: 600px)" in content, "No mobile styles found"
         print("   ✅ PASS - Mobile responsive styles present")
 
+    except requests.exceptions.RequestException as e:
+        pytest.skip(f"Network unavailable or page unreachable: {e}")
     except Exception as e:
         print(f"   ❌ FAIL - Error: {e}")
-        return False
+        assert False, f"Mobile responsive check error: {e}"
 
 
 def test_error_handling():
@@ -119,9 +128,11 @@ def test_error_handling():
         assert not missing, f"Missing error handling: {', '.join(missing)}"
         print("   ✅ PASS - Error handling implemented")
 
+    except requests.exceptions.RequestException as e:
+        pytest.skip(f"Network unavailable or page unreachable: {e}")
     except Exception as e:
         print(f"   ❌ FAIL - Error: {e}")
-        return False
+        assert False, f"Error handling check error: {e}"
 
 
 def main():
