@@ -56,8 +56,12 @@
                 sessionStorage.setItem('dashboard_api_key', apiKey);
             }
             
-            // Use HTTPS through Nginx proxy (avoids CORS issues)
-            const apiBaseUrl = `https://${window.location.hostname}`;
+            // Use same protocol as current page to avoid mixed content blocking
+            // If on HTTP, use port 8080 directly; if on HTTPS, use Nginx proxy
+            const isHttps = window.location.protocol === 'https:';
+            const apiBaseUrl = isHttps 
+                ? `https://${window.location.hostname}` 
+                : `http://${window.location.hostname}:8080`;
             
             return { apiBaseUrl, apiKey };
         };
