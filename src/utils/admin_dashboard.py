@@ -8,6 +8,7 @@ checking queue status, and viewing configuration.
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -40,6 +41,27 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         """Override to use standard logger."""
         logger.debug(f"{self.address_string()} - {format % args}")
 
+    def _is_ip_allowed(self, client_ip: str) -> bool:
+        """Check if client IP is in allowed list (supports CIDR notation)."""
+        if not self.allowed_ips:
+            return True
+        
+        try:
+            client = ipaddress.ip_address(client_ip)
+            for allowed in self.allowed_ips:
+                # Check if it's a CIDR range
+                if '/' in allowed:
+                    network = ipaddress.ip_network(allowed, strict=False)
+                    if client in network:
+                        return True
+                # Exact IP match
+                elif client_ip == allowed:
+                    return True
+            return False
+        except Exception as e:
+            logger.error(f"Error checking IP {client_ip}: {e}")
+            return False
+
     def _check_authentication(self) -> bool:
         """Check if request is authenticated."""
         if not self.auth_enabled:
@@ -47,7 +69,7 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         
         # Check IP whitelist if configured
         client_ip = self.client_address[0]
-        if self.allowed_ips and client_ip not in self.allowed_ips:
+        if self.allowed_ips and not self._is_ip_allowed(client_ip):
             logger.warning(f"Rejected request from unauthorized IP: {client_ip}")
             return False
         
