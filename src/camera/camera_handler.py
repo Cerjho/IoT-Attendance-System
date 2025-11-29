@@ -34,6 +34,9 @@ class CameraHandler:
         resolution: Tuple[int, int] = (640, 480),
         controls: Optional[dict] = None,
         still_settle_ms: int = 700,
+        max_init_retries: int = 3,
+        init_retry_delay: int = 5,
+        health_check_interval: int = 30,
     ):
         """
         Initialize camera handler.
@@ -41,6 +44,9 @@ class CameraHandler:
         Args:
             camera_index: Camera device index (default: 0 for primary camera)
             resolution: Tuple of (width, height) for camera resolution
+            max_init_retries: Max attempts to initialize camera
+            init_retry_delay: Seconds between init retries
+            health_check_interval: Seconds between health checks
         """
         self.camera_index = camera_index
         self.resolution = resolution
@@ -53,10 +59,41 @@ class CameraHandler:
         self.controls = controls or {}
         self.full_still_size: Optional[Tuple[int, int]] = None
         self.still_settle_ms = still_settle_ms
+        
+        # Recovery parameters
+        self.max_init_retries = max_init_retries
+        self.init_retry_delay = init_retry_delay
+        self.health_check_interval = health_check_interval
+        self.last_health_check = None
+        self.consecutive_failures = 0
+        self.recovery_mode = False
 
     def start(self) -> bool:
         """
-        Start camera capture.
+        Start camera capture with retry logic.
+
+        Returns:
+            bool: True if camera started successfully, False otherwise
+        """
+        for attempt in range(1, self.max_init_retries + 1):
+            logger.info(f"Camera init attempt {attempt}/{self.max_init_retries}")
+            
+            if self._start_internal():
+                self.consecutive_failures = 0
+                self.recovery_mode = False
+                return True
+            
+            if attempt < self.max_init_retries:
+                logger.warning(f"Camera init failed, retrying in {self.init_retry_delay}s...")
+                time.sleep(self.init_retry_delay)
+        
+        logger.error(f"Camera failed to initialize after {self.max_init_retries} attempts")
+        self.recovery_mode = True
+        return False
+
+    def _start_internal(self) -> bool:
+        """
+        Internal camera start implementation.
 
         Returns:
             bool: True if camera started successfully, False otherwise
@@ -167,14 +204,25 @@ class CameraHandler:
 
     def get_frame(self) -> Optional[np.ndarray]:
         """
-        Capture and return a single frame from camera.
+        Capture and return a single frame from camera with health checks.
 
         Returns:
             np.ndarray: Frame from camera (BGR format), or None if capture failed
         """
+        # Periodic health check
+        self._check_health()
+        
         if not self.is_open:
-            logger.warning("Camera is not open")
-            return None
+            if self.recovery_mode:
+                # Attempt recovery
+                logger.info("Attempting camera recovery...")
+                if self.start():
+                    logger.info("Camera recovery successful")
+                else:
+                    return None
+            else:
+                logger.warning("Camera is not open")
+                return None
 
         try:
             # Use Picamera2
@@ -185,9 +233,11 @@ class CameraHandler:
                     frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                     self.frame_count += 1
                     self.last_frame_time = datetime.now()
+                    self.consecutive_failures = 0
                     return frame_bgr
                 else:
                     logger.warning("Failed to capture frame from Picamera2")
+                    self._on_frame_failure()
                     return None
 
             # Use OpenCV
@@ -195,10 +245,12 @@ class CameraHandler:
                 ret, frame = self.cap.read()
                 if not ret:
                     logger.warning("Failed to read frame from OpenCV")
+                    self._on_frame_failure()
                     return None
 
                 self.frame_count += 1
                 self.last_frame_time = datetime.now()
+                self.consecutive_failures = 0
                 return frame
 
             else:
@@ -207,6 +259,7 @@ class CameraHandler:
 
         except Exception as e:
             logger.error(f"Error capturing frame: {str(e)}")
+            self._on_frame_failure()
             return None
 
     def capture_still_array(
@@ -332,6 +385,32 @@ class CameraHandler:
         """Context manager exit."""
         self.release()
 
+    def _check_health(self):
+        """Periodic health check to detect camera issues"""
+        now = time.time()
+        if self.last_health_check is None:
+            self.last_health_check = now
+            return
+        
+        elapsed = now - self.last_health_check
+        if elapsed >= self.health_check_interval:
+            logger.debug(f"Camera health check: consecutive_failures={self.consecutive_failures}")
+            self.last_health_check = now
+            
+            # If too many consecutive failures, trigger recovery
+            if self.consecutive_failures >= 5:
+                logger.warning("Camera health check failed, entering recovery mode")
+                self.recovery_mode = True
+                self.release()
+
+    def _on_frame_failure(self):
+        """Handle frame capture failure"""
+        self.consecutive_failures += 1
+        if self.consecutive_failures >= 10:
+            logger.error(f"Camera failing consistently ({self.consecutive_failures} consecutive failures)")
+            self.recovery_mode = True
+            self.release()
+
     def get_camera_info(self) -> dict:
         """
         Get camera information and status.
@@ -349,4 +428,6 @@ class CameraHandler:
                 self.last_frame_time.isoformat() if self.last_frame_time else None
             ),
             "backend": backend,
+            "consecutive_failures": self.consecutive_failures,
+            "recovery_mode": self.recovery_mode,
         }

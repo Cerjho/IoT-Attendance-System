@@ -14,6 +14,8 @@ from typing import Dict, List, Optional
 import requests
 
 from src.network.connectivity import ConnectivityMonitor
+from src.utils.circuit_breaker import CircuitBreaker, CircuitBreakerOpen
+from src.utils.network_timeouts import NetworkTimeouts, DEFAULT_TIMEOUTS
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,24 @@ class CloudSyncManager:
         self.client = None
         self._sync_count = 0
 
+        # Initialize network timeouts
+        timeout_config = config.get("network_timeouts", DEFAULT_TIMEOUTS)
+        self.timeouts = NetworkTimeouts(timeout_config)
+
+        # Initialize circuit breakers
+        self.circuit_breaker_students = CircuitBreaker(
+            name="supabase_students",
+            failure_threshold=config.get("circuit_breaker_threshold", 5),
+            timeout_seconds=config.get("circuit_breaker_timeout", 60),
+            success_threshold=config.get("circuit_breaker_success", 2),
+        )
+        self.circuit_breaker_attendance = CircuitBreaker(
+            name="supabase_attendance",
+            failure_threshold=config.get("circuit_breaker_threshold", 5),
+            timeout_seconds=config.get("circuit_breaker_timeout", 60),
+            success_threshold=config.get("circuit_breaker_success", 2),
+        )
+
         # Validate environment variables are loaded (not placeholders)
         if self.enabled:
             self._validate_credentials()
@@ -130,7 +150,7 @@ class CloudSyncManager:
                 "Authorization": f"Bearer {self.supabase_key}",
             }
             response = requests.get(
-                url, headers=headers, params={"limit": 1}, timeout=5
+                url, headers=headers, params={"limit": 1}, timeout=self.timeouts.get_supabase_timeout()
             )
 
             if response.status_code == 200:
@@ -178,25 +198,18 @@ class CloudSyncManager:
                 return None
 
             student_url = f"{self.supabase_url}/rest/v1/students?student_number=eq.{student_number}&select=id"
-            # Retry student lookup
-            student_response = None
-            for attempt in range(self.retry_attempts):
-                try:
-                    student_response = requests.get(student_url, headers=headers, timeout=5)
-                    if student_response.status_code == 200:
-                        break
-                    else:
-                        logger.warning(f"Student lookup failed (attempt {attempt+1}/{self.retry_attempts}) status={student_response.status_code}")
-                except Exception as e:
-                    logger.warning(f"Student lookup error attempt {attempt+1}: {e}")
-                if attempt + 1 < self.retry_attempts:
-                    asyncio.sleep(0)  # yield
-                    delay = self._get_retry_delay(attempt)
-                    try:
-                        import time as _time
-                        _time.sleep(delay)
-                    except Exception:
-                        pass
+            
+            # Student lookup with circuit breaker
+            try:
+                student_response = self.circuit_breaker_students.call(
+                    requests.get, student_url, headers=headers, timeout=self.timeouts.get_supabase_timeout()
+                )
+            except CircuitBreakerOpen:
+                logger.error("Circuit breaker OPEN for students endpoint")
+                return None
+            except Exception as e:
+                logger.error(f"Student lookup failed: {e}")
+                return None
 
             if student_response.status_code != 200:
                 logger.error(
@@ -229,24 +242,17 @@ class CloudSyncManager:
             if cloud_data.get("time_out"):
                 attendance_data["time_out"] = cloud_data.get("time_out")
 
-            # Step 3: Insert attendance record
-            response = None
-            for attempt in range(self.retry_attempts):
-                try:
-                    response = requests.post(attendance_url, headers=headers, json=attendance_data, timeout=10)
-                    if response.status_code in [200, 201]:
-                        break
-                    else:
-                        logger.warning(f"Attendance insert failed (attempt {attempt+1}/{self.retry_attempts}) status={response.status_code}")
-                except Exception as e:
-                    logger.warning(f"Attendance insert error attempt {attempt+1}: {e}")
-                if attempt + 1 < self.retry_attempts:
-                    delay = self._get_retry_delay(attempt)
-                    try:
-                        import time as _time
-                        _time.sleep(delay)
-                    except Exception:
-                        pass
+            # Step 3: Insert attendance record with circuit breaker
+            try:
+                response = self.circuit_breaker_attendance.call(
+                    requests.post, attendance_url, headers=headers, json=attendance_data, timeout=self.timeouts.get_supabase_timeout()
+                )
+            except CircuitBreakerOpen:
+                logger.error("Circuit breaker OPEN for attendance endpoint")
+                return None
+            except Exception as e:
+                logger.error(f"Attendance insert failed: {e}")
+                return None
 
             if response.status_code in [200, 201]:
                 data = response.json()

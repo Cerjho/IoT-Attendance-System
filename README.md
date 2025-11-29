@@ -10,6 +10,7 @@ Advanced face recognition attendance system for Raspberry Pi with automatic qual
 🔒 **Privacy Compliant** - Daily roster sync with automatic cache wipe  
 📱 **SMS Notifications** - Real-time parent/guardian notifications  
 🎯 **QR Code Validation** - Student verification against daily roster  
+🛡️ **Production-Ready** - Circuit breakers, disk monitoring, camera recovery, transaction safety, configurable timeouts, queue validation, file locking, structured logging  
 
 ## Quick Start
 
@@ -222,6 +223,84 @@ python utils/view_attendance.py
 python utils/view_attendance.py --export
 ```
 
+## Robustness Features
+
+### Disk Space Monitoring
+- Automatic photo cleanup based on retention policy (configurable days/size)
+- Log rotation with configurable retention
+- Pre-save space checks (warn at 10%, fail at 5%)
+- Enforces max storage limits to prevent disk exhaustion
+
+### Circuit Breakers
+- Protects against cascading Supabase failures
+- Separate circuits for students and attendance endpoints
+- Auto-recovery with exponential backoff (configurable thresholds)
+- Open circuit rejects calls immediately to prevent timeouts
+
+### Camera Recovery
+- Init retries with exponential backoff (3 attempts by default)
+- Periodic health checks (30s interval)
+- Auto-recovery from transient failures
+- Graceful degradation to offline mode if camera unavailable
+
+### Transaction Safety
+- Atomic attendance + queue operations (no partial saves)
+- Automatic rollback on failures
+- Ensures data consistency between local DB and sync queue
+
+### Network Timeouts (Phase 2)
+- Configurable connect and read timeouts for all network operations
+- Service-specific overrides (Supabase REST, Storage uploads, connectivity checks)
+- Prevents indefinite hangs from unresponsive services
+- Default: 5s connect, 10s read (Storage: 30s read)
+
+### Queue Data Validation (Phase 2)
+- JSON schema validation for sync queue data
+- Required field checks and type validation
+- Automatic fixing of common issues (missing status defaults to "present")
+- Sanitization removes invalid fields before queueing
+
+### File Locking (Phase 2)
+- POSIX-compliant file locking for database and photo operations
+- Prevents race conditions from concurrent access
+- Configurable timeouts with automatic release
+- Specialized locks: DatabaseLock, PhotoLock
+
+### Structured Logging (Phase 2)
+- JSON log format for machine parsing
+- Correlation IDs for request/operation tracing
+- Thread-safe context tracking
+- Extra fields support for rich debugging context
+
+Configure in `config/config.json`:
+```json
+{
+  "disk_monitor": {
+    "warn_threshold_percent": 10,
+    "critical_threshold_percent": 5,
+    "photo_retention_days": 30,
+    "photo_max_size_mb": 500,
+    "log_retention_days": 7
+  },
+  "cloud": {
+    "circuit_breaker_threshold": 5,
+    "circuit_breaker_timeout": 60,
+    "circuit_breaker_success": 2
+  },
+  "camera_recovery": {
+    "max_init_retries": 3,
+    "init_retry_delay": 5,
+    "health_check_interval": 30
+  },
+  "network_timeouts": {
+    "connect_timeout": 5,
+    "read_timeout": 10,
+    "storage_read_timeout": 30,
+    "connectivity_timeout": 3
+  }
+}
+```
+
 ## Troubleshooting
 
 ### Camera not working
@@ -233,6 +312,8 @@ libcamera-hello --list-cameras
 libcamera-still -o test.jpg
 ```
 
+**Camera Recovery**: System now auto-retries camera init and recovers from transient failures. Check logs for recovery attempts.
+
 ### Roster sync fails
 ```bash
 # Check Supabase connection
@@ -242,6 +323,8 @@ curl -X GET "https://your-project.supabase.co/rest/v1/students?limit=1" \
 # Force manual sync
 python utils/test-scripts/test_roster_sync.py
 ```
+
+**Circuit Breaker**: If Supabase endpoints are failing repeatedly, circuit breaker may open. Wait 60s (default timeout) for auto-retry, or check circuit status in logs.
 
 ### Student rejected
 - Verify student exists in Supabase
@@ -255,6 +338,22 @@ source .venv/bin/activate
 python scripts/force_sync.py
 ```
 This loads `config/config.json`, checks connectivity, uploads any pending photos to Storage, and inserts attendance via Supabase REST. See `scripts/force_sync.py` for details.
+
+### Disk Space Issues
+System monitors disk space and auto-cleans old photos/logs. Check current usage:
+```python
+from src.utils.disk_monitor import DiskMonitor
+from src.utils.config_loader import load_config
+
+config = load_config("config/config.json")
+monitor = DiskMonitor(config.get("disk_monitor", {}))
+usage = monitor.get_disk_usage()
+print(f"Free space: {usage['free_percent']:.1f}%")
+
+# Force cleanup
+result = monitor.auto_cleanup()
+print(f"Cleaned {result['deleted_count']} files, freed {result['freed_bytes']/(1024*1024):.2f}MB")
+```
 
 ## Contributing
 

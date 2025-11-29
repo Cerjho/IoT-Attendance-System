@@ -84,12 +84,69 @@
     "offline_queue_size": 1000,
     "retry_attempts": 3,
     "retry_delay": 30,
+    "circuit_breaker_threshold": 5,
+    "circuit_breaker_timeout": 60,
+    "circuit_breaker_success": 2,
     "roster_sync": {
       "auto_sync_on_boot": true,
       "sync_time": "06:00",
       "cache_expiry_hours": 24,
       "auto_wipe_after_class": true,
       "class_end_time": "17:30"
+    }
+  },
+  "disk_monitor": {
+    "warn_threshold_percent": 10,
+    "critical_threshold_percent": 5,
+    "photo_retention_days": 30,
+    "photo_max_size_mb": 500,
+    "log_retention_days": 7,
+    "photo_dir": "data/photos",
+    "log_dir": "data/logs"
+  },
+  "camera_recovery": {
+    "max_init_retries": 3,
+    "init_retry_delay": 5,
+    "health_check_interval": 30
+  },
+  "network_timeouts": {
+    "connect_timeout": 5,
+    "read_timeout": 10,
+    "supabase_connect_timeout": 5,
+    "supabase_read_timeout": 10,
+    "storage_connect_timeout": 5,
+    "storage_read_timeout": 30,
+    "connectivity_timeout": 3,
+    "sms_timeout": 10
+  },
+  "shutdown": {
+    "timeout": 30,
+    "persist_state": true,
+    "state_file": "data/system_state.json"
+  },
+  "metrics": {
+    "enabled": true,
+    "export_format": "prometheus"
+  },
+  "admin_dashboard": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8080,
+    "auth_enabled": false
+  },
+  "alerts": {
+    "enabled": true,
+    "log_file": "data/logs/alerts.log",
+    "alert_file": "data/logs/alerts.json",
+    "cooldown_minutes": 5,
+    "sms": {
+      "enabled": false,
+      "admin_numbers": []
+    },
+    "webhook": {
+      "enabled": false,
+      "url": "",
+      "auth_header": ""
     }
   },
   "lighting": {

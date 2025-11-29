@@ -9,6 +9,8 @@ import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from src.utils.queue_validator import QueueDataValidator
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +93,7 @@ class SyncQueueManager:
         self, record_type: str, record_id: int, data: Dict, priority: int = 0
     ) -> bool:
         """
-        Add record to sync queue
+        Add record to sync queue with validation
 
         Args:
             record_type: Type of record ('attendance', 'student', 'photo')
@@ -103,6 +105,27 @@ class SyncQueueManager:
             True if successful
         """
         try:
+            # Validate data before adding to queue
+            if record_type == "attendance":
+                # Extract attendance data if wrapped
+                attendance_data = data.get("attendance", data)
+                
+                is_valid, error = QueueDataValidator.validate_attendance(attendance_data)
+                if not is_valid:
+                    logger.error(f"Invalid queue data: {error}")
+                    # Try to fix and retry
+                    is_valid, fixed_data, error = QueueDataValidator.validate_and_fix(attendance_data)
+                    if is_valid:
+                        # Update the wrapped structure if data was wrapped
+                        if "attendance" in data:
+                            data["attendance"] = fixed_data
+                        else:
+                            data = fixed_data
+                        logger.warning(f"Fixed invalid queue data for record {record_id}")
+                    else:
+                        logger.error(f"Cannot fix queue data: {error}")
+                        return False
+
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 

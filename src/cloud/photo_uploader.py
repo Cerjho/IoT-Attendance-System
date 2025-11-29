@@ -10,6 +10,8 @@ from typing import Optional
 
 import requests
 
+from src.utils.network_timeouts import NetworkTimeouts, DEFAULT_TIMEOUTS
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +23,7 @@ class PhotoUploader:
         supabase_url: str,
         supabase_key: str,
         bucket_name: str = "attendance-photos",
+        timeout_config: Optional[dict] = None,
     ):
         """
         Initialize photo uploader
@@ -29,11 +32,15 @@ class PhotoUploader:
             supabase_url: Supabase project URL
             supabase_key: Supabase API key
             bucket_name: Storage bucket name
+            timeout_config: Network timeout configuration
         """
         self.supabase_url = supabase_url
         self.supabase_key = supabase_key
         self.bucket_name = bucket_name
         self.storage_url = f"{supabase_url}/storage/v1"
+        
+        # Initialize timeouts
+        self.timeouts = NetworkTimeouts(timeout_config or DEFAULT_TIMEOUTS)
 
         logger.debug("Photo uploader initialized with REST API")
 
@@ -75,7 +82,7 @@ class PhotoUploader:
             }
 
             response = requests.post(
-                upload_url, headers=headers, data=file_data, timeout=30
+                upload_url, headers=headers, data=file_data, timeout=self.timeouts.get_storage_timeout()
             )
 
             if response.status_code in [200, 201]:
@@ -144,7 +151,7 @@ class PhotoUploader:
 
             payload = {"prefix": path} if path else {}
             response = requests.post(
-                list_url, headers=headers, json=payload, timeout=10
+                list_url, headers=headers, json=payload, timeout=self.timeouts.get_supabase_timeout()
             )
 
             if response.status_code == 200:
