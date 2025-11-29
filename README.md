@@ -182,6 +182,23 @@ python utils/test-scripts/test_face_quality.py
 python utils/check_status.py
 ```
 
+Default pytest runs exclude hardware tests (see `pytest.ini`). Use markers to select:
+```bash
+# All non-hardware (unit + integration)
+pytest -q
+
+# Integration-only
+pytest -q -m integration
+
+# Hardware (on-device)
+pytest -q -m hardware
+```
+
+Integration queue sync test ensures offline queue → cloud sync path marks records synced:
+```bash
+pytest -q tests/test_queue_sync_integration.py -m integration
+```
+
 ### Adding Students
 
 ```bash
