@@ -154,7 +154,9 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length) if content_length > 0 else b'{}'
             data = json.loads(body) if body else {}
 
-            if path == "/devices/register":
+            if path == "/config":
+                self._handle_config_update(data)
+            elif path == "/devices/register":
                 self._handle_device_register(data)
             elif path == "/devices/heartbeat":
                 self._handle_device_heartbeat(data)
@@ -473,6 +475,50 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         # Sanitize sensitive data
         safe_config = self._sanitize_config(config_dict)
         self._send_json_response(safe_config)
+
+    def _handle_config_update(self, new_config: Dict):
+        """Update configuration file."""
+        import os
+        import shutil
+        from pathlib import Path
+        
+        try:
+            config_path = Path("config/config.json")
+            
+            # Backup existing config
+            backup_path = Path(f"config/config.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            if config_path.exists():
+                shutil.copy2(config_path, backup_path)
+                logger.info(f"Config backed up to {backup_path}")
+            
+            # Validate new config has required fields
+            required_fields = ['device_id', 'cloud', 'admin_dashboard']
+            for field in required_fields:
+                if field not in new_config:
+                    self._send_json_response({
+                        "error": f"Missing required field: {field}",
+                        "required_fields": required_fields
+                    }, 400)
+                    return
+            
+            # Write new config
+            with open(config_path, 'w') as f:
+                json.dump(new_config, f, indent=2)
+            
+            logger.info("Configuration updated successfully")
+            
+            self._send_json_response({
+                "success": True,
+                "message": "Configuration saved. Restart service for changes to take effect.",
+                "backup": str(backup_path)
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to update config: {e}", exc_info=True)
+            self._send_json_response({
+                "error": "Failed to save configuration",
+                "details": str(e)
+            }, 500)
 
     def _handle_system_info(self):
         """System information endpoint."""

@@ -1,7 +1,8 @@
 # 🚀 Dashboard Test Guide
 
-**Status:** ✅ Production Ready  
-**Date:** 29 November 2025
+**Status:** ✅ Production Ready - HTTPS Only  
+**Date:** 29 November 2025  
+**Update:** Fixed 503 errors, added dev mode banner
 
 ---
 
