@@ -116,7 +116,11 @@ def cleanup_old_photos(photos_dir: str = "data/photos", keep_days: int = 7):
         deleted_count = 0
         freed_bytes = 0
         
-        for photo_file in photos_path.rglob("*.jpg"):
+        # Clean all photo file types (jpg, png, txt test files)
+        for photo_file in photos_path.rglob("*"):
+            if not photo_file.is_file():
+                continue
+            
             try:
                 file_mtime = photo_file.stat().st_mtime
                 if file_mtime < cutoff_timestamp:
@@ -141,6 +145,66 @@ def cleanup_old_photos(photos_dir: str = "data/photos", keep_days: int = 7):
         return {"error": str(e)}
 
 
+def cleanup_orphaned_photos(db_path: str = "data/attendance.db", photos_dir: str = "data/photos"):
+    """
+    Delete photo files that no longer have corresponding attendance records.
+    
+    Args:
+        db_path: Path to attendance database
+        photos_dir: Directory containing photos
+        
+    Returns:
+        dict: Cleanup statistics
+    """
+    try:
+        photos_path = Path(photos_dir)
+        if not photos_path.exists():
+            return {"deleted_files": 0, "freed_mb": 0}
+        
+        # Get all photo paths from database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT photo_path FROM attendance WHERE photo_path IS NOT NULL")
+        db_photos = {row[0] for row in cursor.fetchall()}
+        conn.close()
+        
+        deleted_count = 0
+        freed_bytes = 0
+        
+        # Check all files in photos directory
+        for photo_file in photos_path.rglob("*"):
+            if not photo_file.is_file():
+                continue
+            
+            try:
+                # Try multiple path formats to match database
+                abs_path = str(photo_file.absolute())
+                rel_path = str(photo_file)
+                
+                # If photo not in database (try both paths), delete it
+                if abs_path not in db_photos and rel_path not in db_photos:
+                    file_size = photo_file.stat().st_size
+                    photo_file.unlink()
+                    deleted_count += 1
+                    freed_bytes += file_size
+                    logger.debug(f"Deleted orphaned photo: {rel_path}")
+            except Exception as e:
+                logger.warning(f"Failed to check/delete {photo_file}: {e}")
+        
+        freed_mb = freed_bytes / (1024 * 1024)
+        
+        logger.info(f"Orphaned photo cleanup: deleted {deleted_count} files, freed {freed_mb:.2f} MB")
+        
+        return {
+            "deleted_files": deleted_count,
+            "freed_mb": round(freed_mb, 2)
+        }
+        
+    except Exception as e:
+        logger.error(f"Orphaned photo cleanup failed: {e}", exc_info=True)
+        return {"error": str(e)}
+
+
 def main():
     """Run nightly cleanup."""
     print("🧹 Starting nightly attendance cache cleanup...")
@@ -157,12 +221,22 @@ def main():
     else:
         print(f"  ❌ Error: {db_stats.get('error')}")
     
+    # Cleanup orphaned photos (no matching attendance record)
+    print("\n🗑️  Cleaning orphaned photos...")
+    orphan_stats = cleanup_orphaned_photos()
+    
+    if "error" not in orphan_stats:
+        print(f"  ✅ Deleted: {orphan_stats['deleted_files']} orphaned files")
+        print(f"  ✅ Freed: {orphan_stats['freed_mb']} MB")
+    else:
+        print(f"  ❌ Error: {orphan_stats.get('error')}")
+    
     # Cleanup old photos (keep 7 days)
     print("\n📸 Cleaning old photos...")
     photo_stats = cleanup_old_photos(keep_days=7)
     
     if "error" not in photo_stats:
-        print(f"  ✅ Deleted: {photo_stats['deleted_files']} files")
+        print(f"  ✅ Deleted: {photo_stats['deleted_files']} old files")
         print(f"  ✅ Freed: {photo_stats['freed_mb']} MB")
     else:
         print(f"  ❌ Error: {photo_stats.get('error')}")
