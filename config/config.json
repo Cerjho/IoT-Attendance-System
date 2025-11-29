@@ -270,7 +270,7 @@
     "test_url": "https://www.google.com"
   },
   "sms_notifications": {
-    "enabled": "true",
+    "enabled": true,
     "username": "EWW3VZ",
     "password": "***REDACTED***",
     "device_id": "zmmfTkL3NacdGAfNqwD7q",

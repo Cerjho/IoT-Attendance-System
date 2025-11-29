@@ -922,9 +922,12 @@
                 }
                 
                 // Convert string values to proper types
-                if (value === 'true') value = true;
-                else if (value === 'false') value = false;
-                else if (!isNaN(value) && value !== '') value = Number(value);
+                // For checkboxes, value is already boolean from e.target.checked
+                if (typeof value === 'string') {
+                    if (value === 'true') value = true;
+                    else if (value === 'false') value = false;
+                    else if (!isNaN(value) && value !== '') value = Number(value);
+                }
                 
                 current[keys[keys.length - 1]] = value;
                 setEditedConfig(newConfig);
@@ -968,12 +971,12 @@
                             <div className="flex items-center">
                                 <input
                                     type="checkbox"
-                                    checked={value === true}
+                                    checked={value === true || value === 'true'}
                                     onChange={(e) => updateField(path, e.target.checked)}
                                     disabled={!editing || disabled}
                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:bg-gray-100"
                                 />
-                                <span className="ml-2 text-sm text-gray-600">{value ? 'Enabled' : 'Disabled'}</span>
+                                <span className="ml-2 text-sm text-gray-600">{(value === true || value === 'true') ? 'Enabled' : 'Disabled'}</span>
                             </div>
                         ) : (
                             <input
