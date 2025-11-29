@@ -31,6 +31,9 @@ ENV/
 .idea/
 *.swp
 *.swo
+*.github/
+!.github/
+!.github/copilot-instructions.md
 *~
 
 # Project-specific

@@ -231,6 +231,14 @@ python utils/test-scripts/test_roster_sync.py
 - Check if roster was synced today
 - Force re-sync roster
 
+### Manual Force Sync
+If records are queued offline, you can force a sync when online:
+```bash
+source .venv/bin/activate
+python scripts/force_sync.py
+```
+This loads `config/config.json`, checks connectivity, uploads any pending photos to Storage, and inserts attendance via Supabase REST. See `scripts/force_sync.py` for details.
+
 ## Contributing
 
 Contributions are welcome! Please read the contribution guidelines before submitting PRs.
