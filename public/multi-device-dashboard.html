@@ -158,8 +158,9 @@
                         if (multiDeviceError.response?.status === 503) {
                             GlobalState.multiDeviceAvailable = false; // Remember globally for all components
                             
-                            const [statusRes, queueRes] = await Promise.all([
+                            const [statusRes, metricsRes, queueRes] = await Promise.all([
                                 apiClient.get('/status'),
+                                apiClient.get('/metrics'),
                                 apiClient.get('/queue/status')
                             ]);
                             
@@ -171,7 +172,7 @@
                             
                             setMetrics({
                                 devices_with_issues: 0,
-                                total_scans_today: 0,
+                                total_scans_today: metricsRes.data.total_scans_today || 0,
                                 total_queue_pending: queueRes.data.total || 0
                             });
                         } else {

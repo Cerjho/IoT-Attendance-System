@@ -361,6 +361,35 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             return
 
         metrics = self.metrics_collector.get_metrics_dict()
+        
+        # Add real-time database metrics
+        if self.db_path and Path(self.db_path).exists():
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                
+                # Count today's scans
+                cursor.execute("""
+                    SELECT COUNT(*) FROM attendance 
+                    WHERE date(timestamp) = date('now')
+                """)
+                today_scans = cursor.fetchone()[0]
+                
+                # Count pending queue
+                cursor.execute("SELECT COUNT(*) FROM sync_queue")
+                queue_count = cursor.fetchone()[0]
+                
+                conn.close()
+                
+                # Add to metrics
+                metrics['total_scans_today'] = today_scans
+                metrics['queue_count'] = queue_count
+                
+            except Exception as e:
+                logger.error(f"Error getting DB metrics: {e}")
+                metrics['total_scans_today'] = 0
+                metrics['queue_count'] = 0
+        
         self._send_json_response(metrics)
 
     def _handle_prometheus_metrics(self):
