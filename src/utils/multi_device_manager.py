@@ -73,13 +73,19 @@ class MultiDeviceManager:
             s.close()
 
             # Extract location from config
-            location_config = self.config.get('location', {})
+            # Handle ConfigLoader or dict
+            if hasattr(self.config, 'get'):
+                config_dict = self.config.get_all() if hasattr(self.config, 'get_all') else dict(self.config)
+            else:
+                config_dict = self.config
+            
+            location_config = config_dict.get('location', {})
             building = location_config.get('building')
             floor = location_config.get('floor')
             room = location_config.get('room')
             location = location_config.get('description', f"{building}/{floor}/{room}")
 
-            # Register this device
+            # Register this device (don't pass full config, too large)
             self.registry.register_device(
                 device_id=self.current_device_id,
                 device_name=self.current_device_name,
@@ -88,7 +94,7 @@ class MultiDeviceManager:
                 building=building,
                 floor=floor,
                 room=room,
-                config=self.config
+                config=None  # Don't store full config in DB
             )
 
             logger.info(f"Current device registered: {self.current_device_id} at {local_ip}")
