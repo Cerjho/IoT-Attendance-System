@@ -722,11 +722,15 @@ attendance_queue_size 144
 
 ---
 
-### 7. Configuration View
+### 7. Configuration View (Read-Only)
 
 **Endpoint:** `GET /config`
 
 **Description:** Get sanitized system configuration (sensitive data redacted).
+
+⚠️ **Important**: This endpoint is **READ ONLY**. Configuration changes require filesystem access to edit `config/config.json` and service restart.
+
+📖 **For adding config update capabilities**, see: [Admin Configuration Management Guide](./ADMIN_CONFIG_MANAGEMENT.md)
 
 **Response:**
 ```json
@@ -748,6 +752,29 @@ attendance_queue_size 144
     "api_key": "***REDACTED***"
   }
 }
+```
+
+**Current Limitations:**
+- ❌ No POST/PUT/PATCH endpoints available
+- ❌ Cannot modify configuration via API
+- ✅ Read-only access to view settings
+
+**Manual Configuration Changes:**
+
+To change configuration currently, SSH access required:
+
+```bash
+# 1. Connect to device
+ssh pi@192.168.1.22
+
+# 2. Edit config file
+nano config/config.json
+
+# 3. Restart service
+sudo systemctl restart attendance-dashboard
+
+# 4. Verify changes
+curl -H "Authorization: Bearer $API_KEY" http://localhost:8080/config | jq .
 ```
 
 ---
