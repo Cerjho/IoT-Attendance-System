@@ -880,11 +880,25 @@
                     setSaving(true);
                     setMessage(null);
                     
-                    await apiClient.post('/config', editedConfig);
+                    const response = await apiClient.post('/config', editedConfig);
                     
                     setConfig(editedConfig);
                     setEditing(false);
-                    setMessage({ type: 'success', text: 'Configuration saved successfully! Restart service for changes to take effect.' });
+                    
+                    // Show detailed success message
+                    let successMsg = '✅ Configuration saved';
+                    if (response.data.auto_restart) {
+                        successMsg += ' • Service restarted automatically';
+                    }
+                    if (response.data.git_commit) {
+                        successMsg += ' • Changes committed to Git';
+                    }
+                    
+                    setMessage({ 
+                        type: 'success', 
+                        text: successMsg,
+                        details: response.data
+                    });
                 } catch (error) {
                     setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to save configuration' });
                 } finally {
@@ -1178,12 +1192,13 @@
                         )}
 
                         {/* Important Notice */}
-                        <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                            <h3 className="font-semibold text-yellow-800 mb-2">⚠️ Important</h3>
+                        <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                            <h3 className="font-semibold text-blue-800 mb-2">🤖 Automated Updates</h3>
                             <ul className="text-sm space-y-1 text-gray-700">
-                                <li>• Configuration changes require service restart to take effect</li>
-                                <li>• Automatic backup is created before each save</li>
-                                <li>• Restart command: <code className="bg-white px-2 py-1 rounded font-mono">sudo systemctl restart attendance-dashboard.service</code></li>
+                                <li>✅ Automatic backup created before each save</li>
+                                <li>✅ Service automatically restarted after changes</li>
+                                <li>✅ Changes automatically committed and pushed to Git</li>
+                                <li className="mt-2 text-xs text-gray-600">Manual restart (if needed): <code className="bg-white px-2 py-1 rounded font-mono text-xs">sudo systemctl restart attendance-dashboard.service</code></li>
                             </ul>
                         </div>
                     </div>

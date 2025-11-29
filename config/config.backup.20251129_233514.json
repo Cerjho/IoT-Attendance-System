@@ -1,16 +1,16 @@
 {
   "camera": {
-    "index": "0",
+    "index": 0,
     "resolution": {
-      "width": "640",
-      "height": "480"
+      "width": 1280,
+      "height": 720
     },
     "fps": 30,
     "picamera": {
       "exposure": {
-        "mode": "auto",
-        "manual_exposure_us": 10000,
-        "manual_analogue_gain": 1
+        "mode": "auto", 
+        "manual_exposure_us": 10000, 
+        "manual_analogue_gain": 1.0
       },
       "awb": {
         "mode": "auto"
@@ -24,10 +24,7 @@
     "preview_draw_crop_box": true,
     "jpeg_quality": 95,
     "use_high_res_still": true,
-    "still_resolution": {
-      "width": 1640,
-      "height": 1232
-    },
+    "still_resolution": { "width": 1640, "height": 1232 },
     "still_settle_ms": 700
   },
   "image_processing": {
@@ -39,7 +36,7 @@
     "denoise_searchWindowSize": 21,
     "awb_grayworld_enabled": false,
     "clahe_enabled": false,
-    "clahe_clip_limit": 2,
+    "clahe_clip_limit": 2.0,
     "clahe_tile_grid": 8,
     "sharpen_enabled": false,
     "sharpen_amount": 0.4,
@@ -78,9 +75,9 @@
   "cloud": {
     "enabled": true,
     "provider": "supabase",
-    "url": "https://ddblgwzylvwuucnpmtzi.supabase.co",
-    "api_key": "***REDACTED***",
-    "device_id": "device_001",
+    "url": "${SUPABASE_URL}",
+    "api_key": "${SUPABASE_KEY}",
+    "device_id": "${DEVICE_ID}",
     "sync_interval": 60,
     "sync_on_capture": true,
     "cleanup_photos_after_sync": true,
@@ -177,31 +174,11 @@
   "buzzer": {
     "enabled": true,
     "gpio_pin": 23,
-    "qr_detected_pattern": [
-      100,
-      50,
-      100
-    ],
-    "face_detected_pattern": [
-      50
-    ],
-    "success_pattern": [
-      200,
-      100,
-      200,
-      100,
-      200
-    ],
-    "error_pattern": [
-      1000
-    ],
-    "duplicate_pattern": [
-      100,
-      100,
-      100,
-      100,
-      100
-    ]
+    "qr_detected_pattern": [100, 50, 100],
+    "face_detected_pattern": [50],
+    "success_pattern": [200, 100, 200, 100, 200],
+    "error_pattern": [1000],
+    "duplicate_pattern": [100, 100, 100, 100, 100]
   },
   "rgb_led": {
     "enabled": true,
@@ -211,41 +188,13 @@
       "blue": 17
     },
     "colors": {
-      "qr_detected": [
-        0,
-        0,
-        255
-      ],
-      "face_detected": [
-        255,
-        165,
-        0
-      ],
-      "success": [
-        0,
-        255,
-        0
-      ],
-      "error": [
-        255,
-        0,
-        0
-      ],
-      "duplicate": [
-        255,
-        255,
-        0
-      ],
-      "late": [
-        255,
-        165,
-        0
-      ],
-      "processing": [
-        255,
-        0,
-        255
-      ]
+      "qr_detected": [0, 0, 255],
+      "face_detected": [255, 165, 0],
+      "success": [0, 255, 0],
+      "error": [255, 0, 0],
+      "duplicate": [255, 255, 0],
+      "late": [255, 165, 0],
+      "processing": [255, 0, 255]
     },
     "brightness": 100,
     "use_full_brightness": true,
@@ -270,18 +219,18 @@
     "test_url": "https://www.google.com"
   },
   "sms_notifications": {
-    "enabled": "true",
-    "username": "EWW3VZ",
-    "password": "***REDACTED***",
-    "device_id": "zmmfTkL3NacdGAfNqwD7q",
-    "api_url": "https://api.sms-gate.app/3rdparty/v1/message",
-    "login_message_template": "\ud83d\udcda MABINI HIGH SCHOOL\n\n\u2705 CHECK-IN: {student_name}\n\ud83d\udd50 {time} | {date}\n\nView: {attendance_link}",
-    "logout_message_template": "\ud83d\udcda MABINI HIGH SCHOOL\n\n\ud83c\udfc1 CHECK-OUT: {student_name}\n\ud83d\udd50 {time} | {date}\n\nView: {attendance_link}",
-    "late_arrival_template": "\u26a0\ufe0f LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n\ud83d\udcc5 {date}\n\nView: {attendance_link}\n\n- Mabini High School",
-    "no_checkout_template": "\u26a0\ufe0f NO CHECK-OUT\n\n{student_name} did not check out today.\nLast seen: {last_checkin_time}\n\nPlease verify.\n\nView: {attendance_link}\n\n- Mabini High School",
-    "absence_alert_template": "\u2757 ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}\n\n- Mabini High School",
-    "weekly_summary_template": "\ud83d\udcca WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}\n\n- Mabini High School",
-    "monthly_summary_template": "\ud83d\udcca MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}\n\n- Mabini High School",
+    "enabled": true,
+    "username": "${SMS_USERNAME}",
+    "password": "${SMS_PASSWORD}",
+    "device_id": "${SMS_DEVICE_ID}",
+    "api_url": "${SMS_API_URL}",
+    "login_message_template": "📚 MABINI HIGH SCHOOL\n\n✅ CHECK-IN: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
+    "logout_message_template": "📚 MABINI HIGH SCHOOL\n\n🏁 CHECK-OUT: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
+    "late_arrival_template": "⚠️ LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n📅 {date}\n\nView: {attendance_link}\n\n- Mabini High School",
+    "no_checkout_template": "⚠️ NO CHECK-OUT\n\n{student_name} did not check out today.\nLast seen: {last_checkin_time}\n\nPlease verify.\n\nView: {attendance_link}\n\n- Mabini High School",
+    "absence_alert_template": "❗ ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}\n\n- Mabini High School",
+    "weekly_summary_template": "📊 WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}\n\n- Mabini High School",
+    "monthly_summary_template": "📊 MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}\n\n- Mabini High School",
     "attendance_view_url": "https://cerjho.github.io/IoT-Attendance-System/view-attendance.html?student_id={student_id}",
     "send_on_capture": true,
     "send_late_alerts": true,
