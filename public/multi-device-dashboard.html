@@ -56,8 +56,8 @@
                 sessionStorage.setItem('dashboard_api_key', apiKey);
             }
             
-            // API is on port 8080 (not the same as static file server port 8888)
-            const apiBaseUrl = `http://${window.location.hostname}:8080`;
+            // Use HTTPS through Nginx proxy (avoids CORS issues)
+            const apiBaseUrl = `https://${window.location.hostname}`;
             
             return { apiBaseUrl, apiKey };
         };
