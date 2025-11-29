@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Attendance - Fleet Management</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // API Configuration
+        const API_BASE_URL = 'http://192.168.1.22:8080';
+        const API_KEY = 'hInJfwkBNOOsF0ZpUWm3pC_g21kJMujLDQeXFgH1HV8'; // Your API key
+
+        // API Client
+        const apiClient = axios.create({
+            baseURL: API_BASE_URL,
+            headers: {
+                'Authorization': `Bearer ${API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            timeout: 10000,
+        });
+
+        // Fleet Overview Component
+        const FleetOverview = () => {
+            const [metrics, setMetrics] = useState(null);
+            const [summary, setSummary] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                loadData();
+                const interval = setInterval(loadData, 15000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    const [metricsRes, statusRes] = await Promise.all([
+                        apiClient.get('/devices/metrics'),
+                        apiClient.get('/devices/status'),
+                    ]);
+                    setMetrics(metricsRes.data);
+                    setSummary(statusRes.data.summary);
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Failed to load fleet data:', error);
+                    setLoading(false);
+                }
+            };
+
+            if (loading) return <div className="text-center p-4">Loading fleet overview...</div>;
+            if (!metrics || !summary) return null;
+
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <StatCard title="Total Devices" value={summary.total} icon="🖥️" />
+                    <StatCard title="Online" value={summary.online} icon="✅" color="text-green-600" />
+                    <StatCard title="Offline" value={summary.offline} icon="❌" color="text-red-600" />
+                    <StatCard title="Issues" value={metrics.devices_with_issues} icon="⚠️" color="text-yellow-600" />
+                    <StatCard title="Today's Scans" value={metrics.total_scans_today} icon="📸" />
+                    <StatCard title="Pending Queue" value={metrics.total_queue_pending} icon="📤" />
+                </div>
+            );
+        };
+
+        const StatCard = ({ title, value, icon, color = 'text-gray-700' }) => (
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-gray-600">{title}</p>
+                        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+                    </div>
+                    <div className="text-4xl">{icon}</div>
+                </div>
+            </div>
+        );
+
+        // Device Card Component
+        const DeviceCard = ({ device }) => {
+            const [expanded, setExpanded] = useState(false);
+            const [status, setStatus] = useState(null);
+            const [loading, setLoading] = useState(false);
+
+            const loadStatus = async () => {
+                setLoading(true);
+                try {
+                    const response = await apiClient.get(`/devices/${device.device_id}/status`);
+                    setStatus(response.data);
+                } catch (error) {
+                    console.error(`Failed to load status for ${device.device_id}:`, error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                if (expanded && !status) {
+                    loadStatus();
+                }
+            }, [expanded]);
+
+            const timeSinceHeartbeat = (timestamp) => {
+                if (!timestamp) return 'Never';
+                const diff = Date.now() - new Date(timestamp).getTime();
+                const minutes = Math.floor(diff / 60000);
+                if (minutes < 1) return 'Just now';
+                if (minutes < 60) return `${minutes}m ago`;
+                return `${Math.floor(minutes / 60)}h ago`;
+            };
+
+            const getStatusBadge = (status) => {
+                const colors = {
+                    online: 'bg-green-500',
+                    offline: 'bg-red-500',
+                    error: 'bg-yellow-500',
+                };
+                return (
+                    <span className={`px-2 py-1 rounded text-white text-xs ${colors[status] || 'bg-gray-500'}`}>
+                        {status}
+                    </span>
+                );
+            };
+
+            return (
+                <div className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition bg-white">
+                    <div className="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 className="font-bold text-lg text-gray-800">{device.device_name}</h3>
+                            <p className="text-sm text-gray-500">{device.device_id}</p>
+                        </div>
+                        {getStatusBadge(device.status)}
+                    </div>
+
+                    <div className="text-sm space-y-1 text-gray-700 mb-3">
+                        <p>📍 {device.location || `${device.building}/${device.floor}/${device.room}`}</p>
+                        <p>🌐 {device.ip_address}:{device.port || 8080}</p>
+                        <p>💓 {timeSinceHeartbeat(device.last_heartbeat)}</p>
+                        <p>📊 {device.total_scans || 0} scans</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setExpanded(!expanded)}
+                            className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition"
+                        >
+                            {expanded ? 'Less' : 'More'}
+                        </button>
+                        <button
+                            onClick={loadStatus}
+                            disabled={loading}
+                            className="text-sm bg-blue-100 px-3 py-1 rounded hover:bg-blue-200 transition disabled:opacity-50"
+                        >
+                            {loading ? 'Loading...' : 'Refresh'}
+                        </button>
+                    </div>
+
+                    {expanded && status && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded text-xs border border-gray-200">
+                            <h4 className="font-semibold mb-2">Current Status:</h4>
+                            <pre className="whitespace-pre-wrap overflow-auto max-h-64">
+                                {JSON.stringify(status.device, null, 2)}
+                            </pre>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Device List Component
+        const DeviceList = () => {
+            const [devices, setDevices] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [filter, setFilter] = useState({ status: '', building: '' });
+
+            useEffect(() => {
+                loadDevices();
+                const interval = setInterval(loadDevices, 30000);
+                return () => clearInterval(interval);
+            }, [filter]);
+
+            const loadDevices = async () => {
+                try {
+                    const params = {};
+                    if (filter.status) params.status = filter.status;
+                    if (filter.building) params.building = filter.building;
+
+                    const response = await apiClient.get('/devices', { params });
+                    setDevices(response.data.devices);
+                } catch (error) {
+                    console.error('Failed to load devices:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            if (loading) return <div className="text-center p-4">Loading devices...</div>;
+
+            return (
+                <div className="device-list">
+                    <div className="filters mb-4 flex gap-4">
+                        <select 
+                            value={filter.status}
+                            onChange={(e) => setFilter({...filter, status: e.target.value})}
+                            className="border border-gray-300 rounded px-3 py-2"
+                        >
+                            <option value="">All Status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                            <option value="error">Error</option>
+                        </select>
+
+                        <select
+                            value={filter.building}
+                            onChange={(e) => setFilter({...filter, building: e.target.value})}
+                            className="border border-gray-300 rounded px-3 py-2"
+                        >
+                            <option value="">All Buildings</option>
+                            <option value="Building A">Building A</option>
+                            <option value="Main Building">Main Building</option>
+                        </select>
+
+                        <button
+                            onClick={loadDevices}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+                        >
+                            Refresh
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {devices.map((device) => (
+                            <DeviceCard key={device.device_id} device={device} />
+                        ))}
+                    </div>
+
+                    {devices.length === 0 && (
+                        <div className="text-center text-gray-500 py-8">
+                            No devices found.
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Device Discovery Component
+        const DeviceDiscovery = () => {
+            const [network, setNetwork] = useState('192.168.1.0/24');
+            const [discovering, setDiscovering] = useState(false);
+            const [result, setResult] = useState(null);
+
+            const startDiscovery = async () => {
+                setDiscovering(true);
+                setResult(null);
+
+                try {
+                    const response = await apiClient.get('/devices/discover', {
+                        params: { network },
+                    });
+                    setResult(response.data);
+                } catch (error) {
+                    setResult({
+                        error: error.message,
+                        discovered: 0,
+                        registered: 0,
+                    });
+                } finally {
+                    setDiscovering(false);
+                }
+            };
+
+            return (
+                <div className="device-discovery bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h2 className="text-xl font-bold mb-4">Discover New Devices</h2>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium mb-2">Network Range</label>
+                        <input
+                            type="text"
+                            value={network}
+                            onChange={(e) => setNetwork(e.target.value)}
+                            placeholder="192.168.1.0/24"
+                            className="border border-gray-300 rounded px-3 py-2 w-full"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            CIDR notation (e.g., 192.168.1.0/24)
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={startDiscovery}
+                        disabled={discovering}
+                        className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 transition"
+                    >
+                        {discovering ? 'Scanning...' : 'Start Discovery'}
+                    </button>
+
+                    {result && (
+                        <div className="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
+                            {result.error ? (
+                                <div className="text-red-600">
+                                    <strong>Error:</strong> {result.error}
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="text-green-600 font-medium">
+                                        ✓ Discovered {result.discovered} devices
+                                    </p>
+                                    <p className="text-blue-600">
+                                        Registered {result.registered} new devices
+                                    </p>
+
+                                    {result.devices && result.devices.length > 0 && (
+                                        <div className="mt-3">
+                                            <h4 className="font-medium mb-2">Found Devices:</h4>
+                                            <ul className="space-y-1 text-sm">
+                                                {result.devices.map((device, idx) => (
+                                                    <li key={idx} className="flex justify-between">
+                                                        <span>{device.device_name}</span>
+                                                        <span className="text-gray-600">{device.ip_address}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Device Location Tree Component
+        const DeviceLocationTree = () => {
+            const [locations, setLocations] = useState({});
+            const [expanded, setExpanded] = useState({});
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                loadLocations();
+            }, []);
+
+            const loadLocations = async () => {
+                try {
+                    const response = await apiClient.get('/locations');
+                    setLocations(response.data.locations);
+                } catch (error) {
+                    console.error('Failed to load locations:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const toggleExpand = (key) => {
+                setExpanded({ ...expanded, [key]: !expanded[key] });
+            };
+
+            if (loading) return <div className="text-center p-4">Loading locations...</div>;
+
+            return (
+                <div className="location-tree bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h2 className="text-xl font-bold mb-4">Device Locations</h2>
+
+                    <div className="space-y-2">
+                        {Object.entries(locations).map(([building, floors]) => (
+                            <div key={building}>
+                                <div
+                                    className="font-medium cursor-pointer hover:bg-gray-50 p-2 rounded flex items-center"
+                                    onClick={() => toggleExpand(building)}
+                                >
+                                    <span className="mr-2">{expanded[building] ? '📂' : '📁'}</span>
+                                    {building}
+                                    <span className="ml-auto text-gray-500 text-sm">
+                                        {Object.values(floors).reduce((sum, rooms) =>
+                                            sum + Object.values(rooms).reduce((s, count) => s + count, 0), 0
+                                        )} devices
+                                    </span>
+                                </div>
+
+                                {expanded[building] && (
+                                    <div className="ml-6 space-y-1">
+                                        {Object.entries(floors).map(([floor, rooms]) => (
+                                            <div key={floor}>
+                                                <div
+                                                    className="cursor-pointer hover:bg-gray-50 p-1 rounded flex items-center text-sm"
+                                                    onClick={() => toggleExpand(`${building}/${floor}`)}
+                                                >
+                                                    <span className="mr-2">{expanded[`${building}/${floor}`] ? '▼' : '▶'}</span>
+                                                    {floor}
+                                                </div>
+
+                                                {expanded[`${building}/${floor}`] && (
+                                                    <div className="ml-6 space-y-1 text-sm text-gray-700">
+                                                        {Object.entries(rooms).map(([room, count]) => (
+                                                            <div key={room} className="flex justify-between">
+                                                                <span>🚪 {room}</span>
+                                                                <span className="text-gray-500">{count}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // Main Dashboard Component
+        const MultiDeviceDashboard = () => {
+            const [activeTab, setActiveTab] = useState('overview');
+
+            return (
+                <div className="multi-device-dashboard p-6 bg-gray-100 min-h-screen">
+                    <header className="mb-6">
+                        <h1 className="text-3xl font-bold text-gray-800">
+                            IoT Attendance System - Fleet Management
+                        </h1>
+                        <p className="text-gray-600">Manage multiple attendance devices from one dashboard</p>
+                    </header>
+
+                    <nav className="flex gap-2 mb-6 border-b border-gray-300">
+                        {['overview', 'devices', 'discover', 'locations'].map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-4 py-2 font-medium capitalize transition ${
+                                    activeTab === tab
+                                        ? 'border-b-2 border-blue-500 text-blue-600'
+                                        : 'text-gray-600 hover:text-gray-800'
+                                }`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <main>
+                        {activeTab === 'overview' && (
+                            <>
+                                <FleetOverview />
+                                <DeviceList />
+                            </>
+                        )}
+
+                        {activeTab === 'devices' && <DeviceList />}
+
+                        {activeTab === 'discover' && <DeviceDiscovery />}
+
+                        {activeTab === 'locations' && <DeviceLocationTree />}
+                    </main>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<MultiDeviceDashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>
