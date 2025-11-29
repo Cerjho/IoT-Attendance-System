@@ -12,6 +12,35 @@ RGB LED (Blue)  17          220kΩ         GPIO → R → Anode
 Common Cathode  -           -           → GND
 ```
 
+## Power Button (On/Off)
+
+```
+Button        GPIO Pin    Notes
+────────────────────────────────────────────────
+Momentary     3 (Pin 5)  Connect other leg to GND (Pin 6)
+```
+
+- Use GPIO 3 (physical pin 5). It is special on Raspberry Pi and can wake the Pi from a halted state.
+- Short press triggers a safe shutdown; pressing while halted powers the Pi back on.
+
+### Enable in Firmware (one-time)
+
+Run the helper script (requires reboot):
+
+```bash
+sudo bash scripts/deployment/enable_power_button.sh
+sudo reboot
+```
+
+This adds the following to your `/boot/firmware/config.txt` (or `/boot/config.txt`):
+
+```
+dtoverlay=gpio-shutdown,gpio_pin=3,active_low=1,gpio_pull=up
+```
+
+With this overlay, the kernel handles shutdown and wake even if the app is not running.
+The app also monitors the button for safe shutdown during operation for extra safety.
+
 ## Visual Feedback Colors
 
 ```
