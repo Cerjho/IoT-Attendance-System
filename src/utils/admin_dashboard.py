@@ -34,6 +34,7 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
     auth_enabled = False
     api_key = None
     allowed_ips = []
+    device_manager = None  # Multi-device manager
 
     def log_message(self, format, *args):
         """Override to use standard logger."""
@@ -107,10 +108,111 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         """Handle CORS preflight requests."""
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", self.headers.get('Origin', '*'))
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
+
+    def do_POST(self):
+        """Handle POST requests for device management."""
+        # Check authentication first
+        if not self._check_authentication():
+            self._send_json_response({
+                "error": "Unauthorized",
+                "message": "Valid API key required"
+            }, 401)
+            return
+        
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        try:
+            # Read request body
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length) if content_length > 0 else b'{}'
+            data = json.loads(body) if body else {}
+
+            if path == "/devices/register":
+                self._handle_device_register(data)
+            elif path == "/devices/heartbeat":
+                self._handle_device_heartbeat(data)
+            elif path.startswith("/devices/") and path.endswith("/command"):
+                device_id = path.split("/")[2]
+                command = data.get('command')
+                params = data.get('params', {})
+                result = self.device_manager.send_command_to_device(device_id, command, params) if self.device_manager else {"error": "Multi-device not enabled"}
+                self._send_json_response(result)
+            else:
+                self._send_json_response({"error": "Not found"}, 404)
+
+        except json.JSONDecodeError:
+            self._send_json_response({"error": "Invalid JSON"}, 400)
+        except Exception as e:
+            logger.error(f"Error handling POST: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_device_register(self, data: Dict):
+        """Register a new device."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        required_fields = ['device_id', 'device_name', 'ip_address']
+        if not all(field in data for field in required_fields):
+            self._send_json_response({
+                "error": "Missing required fields",
+                "required": required_fields
+            }, 400)
+            return
+
+        try:
+            success = self.device_manager.registry.register_device(
+                device_id=data['device_id'],
+                device_name=data['device_name'],
+                ip_address=data['ip_address'],
+                location=data.get('location'),
+                building=data.get('building'),
+                floor=data.get('floor'),
+                room=data.get('room'),
+                api_key=data.get('api_key'),
+                config=data.get('config')
+            )
+
+            if success:
+                self._send_json_response({
+                    "success": True,
+                    "message": f"Device {data['device_id']} registered successfully"
+                })
+            else:
+                self._send_json_response({"error": "Registration failed"}, 500)
+
+        except Exception as e:
+            logger.error(f"Error registering device: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_device_heartbeat(self, data: Dict):
+        """Handle device heartbeat report."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        device_id = data.get('device_id')
+        if not device_id:
+            self._send_json_response({"error": "device_id required"}, 400)
+            return
+
+        try:
+            metrics = data.get('metrics', {})
+            self.device_manager.update_device_heartbeat_from_remote(device_id, metrics)
+
+            self._send_json_response({
+                "success": True,
+                "message": "Heartbeat recorded"
+            })
+
+        except Exception as e:
+            logger.error(f"Error recording heartbeat: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
 
     def do_GET(self):
         """Handle GET requests."""
@@ -144,6 +246,26 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 self._handle_config()
             elif path == "/system/info":
                 self._handle_system_info()
+            # Multi-device endpoints
+            elif path == "/devices":
+                self._handle_devices_list()
+            elif path == "/devices/discover":
+                network = query_params.get("network", ["192.168.1.0/24"])[0]
+                self._handle_devices_discover(network)
+            elif path == "/devices/status":
+                self._handle_devices_status()
+            elif path == "/devices/metrics":
+                self._handle_devices_metrics()
+            elif path.startswith("/devices/") and "/status" in path:
+                device_id = path.split("/")[2]
+                self._handle_device_status(device_id)
+            elif path.startswith("/devices/") and "/command/" in path:
+                parts = path.split("/")
+                device_id = parts[2]
+                command = parts[4] if len(parts) > 4 else None
+                self._handle_device_command(device_id, command)
+            elif path == "/locations":
+                self._handle_device_locations()
             else:
                 self._send_json_response({"error": "Not found"}, 404)
 
@@ -335,15 +457,170 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         import platform
         import sys
 
+        device_id = self.config.get('device_id', 'unknown') if hasattr(self.config, 'get') else 'unknown'
+
         info = {
             "python_version": sys.version,
             "platform": platform.platform(),
             "processor": platform.processor(),
             "hostname": platform.node(),
+            "device_id": device_id,
             "timestamp": datetime.now().isoformat(),
         }
 
         self._send_json_response(info)
+
+    # Multi-Device Management Endpoints
+
+    def _handle_devices_list(self):
+        """List all registered devices."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        try:
+            from urllib.parse import parse_qs
+            query = parse_qs(urlparse(self.path).query)
+            
+            status = query.get('status', [None])[0]
+            building = query.get('building', [None])[0]
+            floor = query.get('floor', [None])[0]
+
+            devices = self.device_manager.registry.get_all_devices(
+                status=status,
+                building=building,
+                floor=floor
+            )
+
+            self._send_json_response({
+                "devices": devices,
+                "count": len(devices),
+                "timestamp": datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            logger.error(f"Error listing devices: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_devices_discover(self, network: str):
+        """Discover devices on network."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        try:
+            logger.info(f"Starting device discovery on {network}")
+            
+            discovered = self.device_manager.discover_devices(network)
+            
+            # Auto-register discovered devices
+            registered = self.device_manager.register_discovered_devices(discovered)
+
+            self._send_json_response({
+                "discovered": len(discovered),
+                "registered": registered,
+                "devices": discovered,
+                "timestamp": datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            logger.error(f"Error discovering devices: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_devices_status(self):
+        """Get status of all devices."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        try:
+            devices_status = self.device_manager.get_all_devices_status()
+            status_summary = self.device_manager.registry.get_device_status_summary()
+
+            self._send_json_response({
+                "summary": status_summary,
+                "devices": devices_status,
+                "timestamp": datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            logger.error(f"Error getting devices status: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_devices_metrics(self):
+        """Get aggregated metrics from all devices."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        try:
+            metrics = self.device_manager.get_aggregated_metrics()
+            self._send_json_response(metrics)
+
+        except Exception as e:
+            logger.error(f"Error getting aggregated metrics: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_device_status(self, device_id: str):
+        """Get status of a specific device."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        try:
+            device = self.device_manager.registry.get_device(device_id)
+            if not device:
+                self._send_json_response({"error": "Device not found"}, 404)
+                return
+
+            # Get current status from device
+            status_result = self.device_manager.send_command_to_device(device_id, 'status')
+
+            self._send_json_response({
+                "device": device,
+                "current_status": status_result.get('data') if status_result.get('success') else None,
+                "online": status_result.get('success', False),
+                "timestamp": datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            logger.error(f"Error getting device status: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_device_command(self, device_id: str, command: str):
+        """Send command to a specific device."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        if not command:
+            self._send_json_response({"error": "Command required"}, 400)
+            return
+
+        try:
+            result = self.device_manager.send_command_to_device(device_id, command)
+            self._send_json_response(result)
+
+        except Exception as e:
+            logger.error(f"Error sending command to device: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_device_locations(self):
+        """Get device location hierarchy."""
+        if not self.device_manager:
+            self._send_json_response({"error": "Multi-device management not enabled"}, 503)
+            return
+
+        try:
+            locations = self.device_manager.registry.get_device_locations()
+            self._send_json_response({
+                "locations": locations,
+                "timestamp": datetime.now().isoformat()
+            })
+
+        except Exception as e:
+            logger.error(f"Error getting device locations: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
 
     def _get_queue_size(self) -> int:
         """Get sync queue size."""
@@ -429,6 +706,7 @@ class AdminDashboard:
         db_path: str = "data/attendance.db",
         host: str = "0.0.0.0",
         port: int = 8080,
+        enable_multi_device: bool = False,
     ):
         """
         Initialize admin dashboard.
@@ -440,6 +718,7 @@ class AdminDashboard:
             db_path: Path to database
             host: Server host
             port: Server port
+            enable_multi_device: Enable multi-device management
         """
         self.config = config
         self.metrics_collector = metrics_collector
@@ -468,6 +747,20 @@ class AdminDashboard:
         if self.allowed_ips:
             logger.info(f"IP whitelist enabled: {len(self.allowed_ips)} IPs allowed")
 
+        # Multi-device management
+        self.device_manager = None
+        if enable_multi_device or dashboard_config.get("multi_device_enabled", False):
+            try:
+                from ..database.device_registry import DeviceRegistry
+                from .multi_device_manager import MultiDeviceManager
+                
+                registry = DeviceRegistry()
+                self.device_manager = MultiDeviceManager(config, registry)
+                self.device_manager.start()
+                logger.info("Multi-device management ENABLED")
+            except Exception as e:
+                logger.error(f"Failed to enable multi-device management: {e}")
+
         # Set class variables for handler
         AdminAPIHandler.config = config
         AdminAPIHandler.metrics_collector = metrics_collector
@@ -476,6 +769,7 @@ class AdminDashboard:
         AdminAPIHandler.auth_enabled = self.auth_enabled
         AdminAPIHandler.api_key = self.api_key
         AdminAPIHandler.allowed_ips = self.allowed_ips
+        AdminAPIHandler.device_manager = self.device_manager
 
         if self.auth_enabled:
             logger.info(f"Admin dashboard initialized on {host}:{port} (AUTH ENABLED)")
@@ -508,6 +802,10 @@ class AdminDashboard:
                 self.server_thread.join(timeout=5)
 
             logger.info("Admin dashboard stopped")
+
+        # Stop multi-device manager
+        if self.device_manager:
+            self.device_manager.stop()
 
     def is_running(self) -> bool:
         """Check if server is running."""
