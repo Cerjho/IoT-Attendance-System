@@ -5,8 +5,13 @@ REST API for monitoring system health, viewing recent scans,
 checking queue status, and viewing configuration.
 """
 
+import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
+import secrets
 import sqlite3
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -26,16 +31,61 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
     metrics_collector = None
     shutdown_manager = None
     db_path = None
+    auth_enabled = False
+    api_key = None
+    allowed_ips = []
 
     def log_message(self, format, *args):
         """Override to use standard logger."""
         logger.debug(f"{self.address_string()} - {format % args}")
 
+    def _check_authentication(self) -> bool:
+        """Check if request is authenticated."""
+        if not self.auth_enabled:
+            return True
+        
+        # Check IP whitelist if configured
+        client_ip = self.client_address[0]
+        if self.allowed_ips and client_ip not in self.allowed_ips:
+            logger.warning(f"Rejected request from unauthorized IP: {client_ip}")
+            return False
+        
+        # Check API key
+        auth_header = self.headers.get('Authorization', '')
+        api_key_header = self.headers.get('X-API-Key', '')
+        
+        # Support both Bearer token and X-API-Key header
+        provided_key = None
+        if auth_header.startswith('Bearer '):
+            provided_key = auth_header[7:]
+        elif api_key_header:
+            provided_key = api_key_header
+        
+        if not provided_key:
+            logger.warning(f"Missing authentication from {client_ip}")
+            return False
+        
+        # Constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(provided_key, self.api_key):
+            logger.warning(f"Invalid API key from {client_ip}")
+            return False
+        
+        return True
+
     def _send_json_response(self, data: dict, status_code: int = 200):
         """Send JSON response."""
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # Security headers
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        # CORS - restrict in production
+        allowed_origin = self.headers.get('Origin', '*')
+        self.send_header("Access-Control-Allow-Origin", allowed_origin)
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key")
         self.end_headers()
         self.wfile.write(json.dumps(data, indent=2).encode())
 
@@ -43,12 +93,35 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         """Send text response."""
         self.send_response(status_code)
         self.send_header("Content-Type", content_type)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # Security headers
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-XSS-Protection", "1; mode=block")
+        self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        allowed_origin = self.headers.get('Origin', '*')
+        self.send_header("Access-Control-Allow-Origin", allowed_origin)
         self.end_headers()
         self.wfile.write(text.encode())
 
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", self.headers.get('Origin', '*'))
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
+
     def do_GET(self):
         """Handle GET requests."""
+        # Check authentication first
+        if not self._check_authentication():
+            self._send_json_response({
+                "error": "Unauthorized",
+                "message": "Valid API key required. Use Authorization: Bearer <key> or X-API-Key: <key> header"
+            }, 401)
+            return
+        
         parsed = urlparse(self.path)
         path = parsed.path
         query_params = parse_qs(parsed.query)
@@ -167,8 +240,8 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             cursor.execute(
                 """
                 SELECT 
-                    id, student_number, timestamp, scan_type, status,
-                    photo_path, synced, sync_timestamp
+                    id, student_id, timestamp, scan_type, status,
+                    photo_path, synced, sync_timestamp, cloud_record_id
                 FROM attendance
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -245,8 +318,16 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             self._send_json_response({"error": "Config not available"}, 503)
             return
 
+        # Convert ConfigLoader to dict if needed
+        if hasattr(self.config, 'get_all'):
+            config_dict = self.config.get_all()
+        elif isinstance(self.config, dict):
+            config_dict = self.config
+        else:
+            config_dict = dict(self.config)
+        
         # Sanitize sensitive data
-        safe_config = self._sanitize_config(self.config)
+        safe_config = self._sanitize_config(config_dict)
         self._send_json_response(safe_config)
 
     def _handle_system_info(self):
@@ -369,13 +450,38 @@ class AdminDashboard:
         self.server: Optional[HTTPServer] = None
         self.server_thread: Optional[Thread] = None
 
+        # Get dashboard config
+        dashboard_config = config.get("admin_dashboard", {}) if hasattr(config, 'get') else config.get("admin_dashboard", {})
+        
+        # Authentication setup
+        self.auth_enabled = dashboard_config.get("auth_enabled", False)
+        self.api_key = os.getenv("DASHBOARD_API_KEY") or dashboard_config.get("api_key")
+        
+        # Generate API key if auth enabled but no key provided
+        if self.auth_enabled and not self.api_key:
+            self.api_key = secrets.token_urlsafe(32)
+            logger.warning(f"Generated API key: {self.api_key}")
+            logger.warning("Save this key securely! Set DASHBOARD_API_KEY in .env")
+        
+        # IP whitelist
+        self.allowed_ips = dashboard_config.get("allowed_ips", [])
+        if self.allowed_ips:
+            logger.info(f"IP whitelist enabled: {len(self.allowed_ips)} IPs allowed")
+
         # Set class variables for handler
         AdminAPIHandler.config = config
         AdminAPIHandler.metrics_collector = metrics_collector
         AdminAPIHandler.shutdown_manager = shutdown_manager
         AdminAPIHandler.db_path = db_path
+        AdminAPIHandler.auth_enabled = self.auth_enabled
+        AdminAPIHandler.api_key = self.api_key
+        AdminAPIHandler.allowed_ips = self.allowed_ips
 
-        logger.info(f"Admin dashboard initialized on {host}:{port}")
+        if self.auth_enabled:
+            logger.info(f"Admin dashboard initialized on {host}:{port} (AUTH ENABLED)")
+        else:
+            logger.warning(f"Admin dashboard initialized on {host}:{port} (NO AUTH - NOT SECURE FOR REMOTE ACCESS)")
+            logger.warning("Enable auth_enabled in config for remote access security")
 
     def start(self):
         """Start the dashboard server."""

@@ -132,7 +132,11 @@
     "enabled": true,
     "host": "0.0.0.0",
     "port": 8080,
-    "auth_enabled": false
+    "auth_enabled": true,
+    "allowed_ips": [
+      "192.168.1.0/24",
+      "127.0.0.1"
+    ]
   },
   "alerts": {
     "enabled": true,
