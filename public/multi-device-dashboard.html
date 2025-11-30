@@ -942,9 +942,15 @@
                 setLoading(true);
                 try {
                     const response = await apiClient.get('/config');
+                    console.log('Config loaded, top-level keys:', Object.keys(response.data));
+                    console.log('Has device_id:', !!response.data.device_id);
+                    console.log('Has cloud:', !!response.data.cloud);
+                    console.log('Has admin_dashboard:', !!response.data.admin_dashboard);
+                    
                     setConfig(response.data);
                     setEditedConfig(JSON.parse(JSON.stringify(response.data))); // Deep copy
                 } catch (error) {
+                    console.error('Failed to load config:', error);
                     setMessage({ type: 'error', text: 'Failed to load configuration' });
                 } finally {
                     setLoading(false);
@@ -955,6 +961,22 @@
                 try {
                     setSaving(true);
                     setMessage(null);
+                    
+                    // Validate required fields before sending
+                    const required = ['device_id', 'cloud', 'admin_dashboard'];
+                    const missing = required.filter(field => !editedConfig[field]);
+                    if (missing.length > 0) {
+                        console.error('Missing required fields:', missing);
+                        console.log('Current config:', JSON.stringify(editedConfig, null, 2));
+                        setMessage({ 
+                            type: 'error', 
+                            text: `❌ Missing required fields: ${missing.join(', ')}. Please refresh the page and try again.` 
+                        });
+                        setSaving(false);
+                        return;
+                    }
+                    
+                    console.log('Saving config with fields:', Object.keys(editedConfig));
                     
                     const response = await apiClient.post('/config', editedConfig);
                     
@@ -976,7 +998,28 @@
                         details: response.data
                     });
                 } catch (error) {
-                    setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to save configuration' });
+                    console.error('Save error:', error);
+                    console.error('Error response:', error.response?.data);
+                    
+                    // Build detailed error message
+                    let errorMsg = 'Failed to save configuration';
+                    if (error.response?.data) {
+                        if (error.response.data.error) {
+                            errorMsg = error.response.data.error;
+                        }
+                        if (error.response.data.details) {
+                            errorMsg += `: ${error.response.data.details}`;
+                        }
+                        if (error.response.data.required_fields) {
+                            errorMsg += ` (Required: ${error.response.data.required_fields.join(', ')})`;
+                        }
+                    }
+                    
+                    setMessage({ 
+                        type: 'error', 
+                        text: errorMsg,
+                        details: error.response?.data
+                    });
                 } finally {
                     setSaving(false);
                 }
@@ -1096,12 +1139,20 @@
                     </div>
 
                     {message && (
-                        <div className={`mb-6 p-4 rounded border ${
+                        <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded border ${
                             message.type === 'success' 
                                 ? 'bg-green-50 border-green-200 text-green-800' 
                                 : 'bg-red-50 border-red-200 text-red-800'
                         }`}>
-                            {message.text}
+                            <p className="font-semibold text-sm sm:text-base">{message.text}</p>
+                            {message.details && (
+                                <details className="mt-2 text-xs sm:text-sm">
+                                    <summary className="cursor-pointer hover:underline">Show details</summary>
+                                    <pre className="mt-2 p-2 bg-white rounded text-xs overflow-x-auto">
+                                        {JSON.stringify(message.details, null, 2)}
+                                    </pre>
+                                </details>
+                            )}
                         </div>
                     )}
 
