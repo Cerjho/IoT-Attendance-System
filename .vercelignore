@@ -1,0 +1,57 @@
+# Python
+*.pyc
+__pycache__/
+*.py
+*.pyi
+venv/
+.venv/
+*.egg-info/
+
+# Data and logs
+data/
+logs/
+*.db
+*.log
+*.json.backup.*
+
+# Configuration
+.env
+config/config.json
+
+# Testing
+tests/
+pytest.ini
+.pytest_cache/
+
+# Scripts
+scripts/
+utils/
+
+# Source code (not needed for frontend)
+src/
+attendance_system.py
+requirements.txt
+
+# Git
+.git/
+.github/workflows/
+
+# Documentation (keep only what's needed)
+docs/technical/
+docs/implementation/
+docs/archived/
+docs/user-guides/
+PROJECT_STRUCTURE.md
+README.md
+
+# Examples
+examples/
+
+# Patches
+patches/
+
+# Misc
+.DS_Store
+*.swp
+*.swo
+*~
