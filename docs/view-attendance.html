@@ -453,12 +453,11 @@
                 return;
             }
             
-            document.getElementById('studentId').textContent = studentId;
-            
             try {
-                // First, fetch student info to get UUID
+                // studentId is now a UUID from the URL parameter
+                // Fetch student info using UUID directly
                 const studentResponse = await fetch(
-                    `${SUPABASE_URL}/rest/v1/students?student_number=eq.${studentId}&select=id,first_name,last_name,grade_level,section`,
+                    `${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=id,student_number,first_name,last_name,grade_level,section`,
                     {
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
@@ -473,23 +472,25 @@
                 
                 const students = await studentResponse.json();
                 if (students.length === 0) {
-                    showError('Student not found. Please check the student ID.');
+                    showError('Student not found. Please check the link.');
                     return;
                 }
                 
                 const student = students[0];
-                const studentUUID = student.id;
+                const studentUUID = student.id;  // This is the UUID from URL
+                const studentNumber = student.student_number;  // This is the QR code number
                 
-                // Update student info display
+                // Update student info display with student_number (not UUID)
+                document.getElementById('studentId').textContent = studentNumber;
                 document.getElementById('studentName').textContent = 
                     `${student.first_name} ${student.last_name}`;
                 const gradeNum = student.grade_level ? student.grade_level.replace(/Grade\s*/i, '') : '';
                 const sectionLetter = student.section ? student.section.replace(/Section\s*/i, '') : '';
                 document.getElementById('studentDetails').innerHTML = 
-                    `Student ID: ${studentId} | Grade: ${gradeNum} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Section: ${sectionLetter}`;
+                    `Student ID: ${studentNumber} | Grade: ${gradeNum} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Section: ${sectionLetter}`;
                 document.getElementById('studentInfo').style.display = 'block';
                 
-                // Now fetch attendance records using UUID
+                // Fetch attendance records using UUID
                 const response = await fetch(
                     `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentUUID}&select=*&order=created_at.desc&limit=30`,
                     {
