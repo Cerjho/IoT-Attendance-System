@@ -176,9 +176,9 @@ class RosterSyncManager:
                 "Content-Type": "application/json",
             }
 
-            # Fetch active students with all needed fields
+            # Fetch active students with all needed fields (including id for UUID)
             params = {
-                "select": "student_number,first_name,middle_name,last_name,email,parent_guardian_contact,grade_level,section,status",
+                "select": "id,student_number,first_name,middle_name,last_name,email,parent_guardian_contact,grade_level,section,status",
                 "status": "eq.active",  # Only active students
             }
 
