@@ -48,6 +48,7 @@ class AttendanceDatabase:
             """
             CREATE TABLE IF NOT EXISTS students (
                 student_id TEXT PRIMARY KEY,
+                uuid TEXT,
                 name TEXT,
                 email TEXT,
                 parent_phone TEXT,

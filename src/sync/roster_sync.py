@@ -240,6 +240,7 @@ class RosterSyncManager:
             synced_count = 0
             for student in students:
                 # Map new schema to local cache fields
+                student_uuid = student.get("id")  # UUID from Supabase
                 student_number = student.get("student_number")
                 first_name = student.get("first_name", "")
                 middle_name = student.get("middle_name", "")
@@ -254,14 +255,15 @@ class RosterSyncManager:
                 name_parts = [first_name, middle_name, last_name]
                 full_name = " ".join([part for part in name_parts if part]).strip()
 
-                # Store in local cache (using student_id field for compatibility)
+                # Store in local cache with UUID (using student_id field for compatibility)
                 cursor.execute(
                     """
-                    INSERT OR REPLACE INTO students (student_id, name, email, parent_phone, created_at)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO students (student_id, uuid, name, email, parent_phone, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """,
                     (
                         student_number,
+                        student_uuid,
                         full_name,
                         email,
                         parent_phone,

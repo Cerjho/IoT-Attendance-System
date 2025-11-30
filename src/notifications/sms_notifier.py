@@ -213,15 +213,19 @@ class SMSNotifier:
         self.recent_notifications[key] = self.time_provider.now()
         return True
     
-    def _generate_attendance_link(self, student_id: str) -> str:
+    def _generate_attendance_link(self, student_identifier: str) -> str:
         """
         Generate attendance view link (signed or unsigned).
         
         Args:
-            student_id: Student identifier
+            student_identifier: Student UUID from Supabase (preferred) or student_number (fallback)
         
         Returns:
             Signed URL if signing enabled, plain URL otherwise
+            
+        Note:
+            Should use student UUID (e.g., '3c2c6e8f-...') not student_number (e.g., '2021001')
+            Student_number is only for QR codes, UUID is for public links.
         """
         if not self.attendance_view_url:
             return ""
@@ -234,18 +238,18 @@ class SMSNotifier:
             try:
                 signed_url = self.url_signer.sign_url(
                     base_url=base_url,
-                    student_id=student_id,
+                    student_id=student_identifier,
                     expiry_hours=self.signed_url_expiry_hours
                 )
-                logger.debug(f"Generated signed URL for student {student_id}")
+                logger.debug(f"Generated signed URL for student {student_identifier}")
                 return signed_url
             except Exception as e:
                 logger.error(f"Failed to generate signed URL: {e}")
                 # Fallback to unsigned URL
-                return self.attendance_view_url.format(student_id=student_id)
+                return self.attendance_view_url.format(student_id=student_identifier)
         else:
             # Plain URL without signature
-            return self.attendance_view_url.format(student_id=student_id)
+            return self.attendance_view_url.format(student_id=student_identifier)
 
     def send_attendance_notification(
         self,
@@ -256,18 +260,20 @@ class SMSNotifier:
         scan_type: str = "time_in",
         status: str = "present",
         minutes_late: int = 0,
+        student_uuid: Optional[str] = None,
     ) -> bool:
         """
         Send attendance notification to parent
 
         Args:
-            student_id: Student identifier
+            student_id: Student number (from QR code, e.g., '2021001')
             student_name: Student name (optional)
             parent_phone: Parent's phone number (E.164 format preferred)
             timestamp: Attendance timestamp (defaults to now)
             scan_type: 'time_in' for login or 'time_out' for logout
             status: 'present', 'late', or 'absent'
             minutes_late: Minutes late (if status is 'late')
+            student_uuid: Student UUID from Supabase (for attendance link)
 
         Returns:
             bool: True if notification sent successfully, False otherwise
@@ -304,8 +310,10 @@ class SMSNotifier:
         else:
             message_template = self.login_message_template
 
-        # Generate attendance view link (signed or unsigned)
-        attendance_link = self._generate_attendance_link(student_id)
+        # Generate attendance view link using UUID (not student_number)
+        # Use student_uuid if provided, otherwise fallback to student_id (student_number)
+        link_identifier = student_uuid if student_uuid else student_id
+        attendance_link = self._generate_attendance_link(link_identifier)
 
         # Format message
         message = message_template.format(

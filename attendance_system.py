@@ -504,18 +504,22 @@ class IoTAttendanceSystem:
                 if self.sms_notifier.enabled and self.config.get(
                     "sms_notifications", {}
                 ).get("send_on_capture", True):
-                    # Get fresh student data (may have parent phone)
+                    # Get fresh student data (may have parent phone and UUID)
                     student_data = self.database.get_student(student_id)
                     if student_data and student_data.get("parent_phone"):
                         logger.info(
                             f"Sending SMS notification to parent for {student_id}"
                         )
+                        # Get UUID for attendance link (prefer UUID over student_number)
+                        student_uuid = student_data.get("uuid")
+                        
                         sms_sent = self.sms_notifier.send_attendance_notification(
                             student_id=student_id,
                             student_name=student_data.get("name"),
                             parent_phone=student_data.get("parent_phone"),
                             timestamp=datetime.now(),
                             scan_type=attendance_data.get("scan_type", "time_in"),
+                            student_uuid=student_uuid,
                         )
                         if sms_sent:
                             logger.info(
