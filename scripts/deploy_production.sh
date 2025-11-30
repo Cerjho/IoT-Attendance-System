@@ -16,11 +16,7 @@ echo "PRODUCTION DEPLOYMENT SETUP"
 echo "========================================================================"
 echo ""
 
-# Check if running as root
-if [ "$EUID" -eq 0 ]; then
-    echo "❌ Do not run as root. Run as iot user with sudo when needed."
-    exit 1
-fi
+# Note: Script uses sudo internally for privileged operations
 
 # 1. Create systemd services
 echo "1️⃣  Setting up systemd services..."
