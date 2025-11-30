@@ -240,17 +240,37 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Handle GET requests."""
-        # Check authentication first
+        parsed = urlparse(self.path)
+        path = parsed.path
+        query_params = parse_qs(parsed.query)
+        
+        # Serve dashboard HTML without authentication
+        if path == "/" or path == "/index.html":
+            try:
+                dashboard_path = Path("public/multi-device-dashboard.html")
+                if dashboard_path.exists():
+                    with open(dashboard_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(content.encode('utf-8'))))
+                    self.end_headers()
+                    self.wfile.write(content.encode('utf-8'))
+                else:
+                    self._send_json_response({"error": "Dashboard HTML not found"}, 404)
+                return
+            except Exception as e:
+                logger.error(f"Error serving dashboard HTML: {e}")
+                self._send_json_response({"error": "Failed to load dashboard"}, 500)
+                return
+        
+        # Check authentication for API endpoints
         if not self._check_authentication():
             self._send_json_response({
                 "error": "Unauthorized",
                 "message": "Valid API key required. Use Authorization: Bearer <key> or X-API-Key: <key> header"
             }, 401)
             return
-        
-        parsed = urlparse(self.path)
-        path = parsed.path
-        query_params = parse_qs(parsed.query)
 
         try:
             if path == "/health":
