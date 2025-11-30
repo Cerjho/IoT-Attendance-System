@@ -107,8 +107,9 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         # CORS - restrict in production
         allowed_origin = self.headers.get('Origin', '*')
         self.send_header("Access-Control-Allow-Origin", allowed_origin)
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
+        self.send_header("Access-Control-Allow-Credentials", "true")
         self.end_headers()
         self.wfile.write(json.dumps(data, indent=2).encode())
 
@@ -123,6 +124,7 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         allowed_origin = self.headers.get('Origin', '*')
         self.send_header("Access-Control-Allow-Origin", allowed_origin)
+        self.send_header("Access-Control-Allow-Credentials", "true")
         self.end_headers()
         self.wfile.write(text.encode())
 
@@ -132,6 +134,7 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", self.headers.get('Origin', '*'))
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
+        self.send_header("Access-Control-Allow-Credentials", "true")
         self.send_header("Access-Control-Max-Age", "86400")
         self.end_headers()
 
