@@ -914,24 +914,25 @@
             };
 
             const updateField = (path, value) => {
-                const newConfig = { ...editedConfig };
-                const keys = path.split('.');
-                let current = newConfig;
-                
-                for (let i = 0; i < keys.length - 1; i++) {
-                    current = current[keys[i]];
-                }
-                
-                // Convert string values to proper types
-                // For checkboxes, value is already boolean from e.target.checked
-                if (typeof value === 'string') {
-                    if (value === 'true') value = true;
-                    else if (value === 'false') value = false;
-                    else if (!isNaN(value) && value !== '') value = Number(value);
-                }
-                
-                current[keys[keys.length - 1]] = value;
-                setEditedConfig(newConfig);
+                setEditedConfig(prevConfig => {
+                    // Deep clone to avoid mutation issues
+                    const newConfig = JSON.parse(JSON.stringify(prevConfig));
+                    const keys = path.split('.');
+                    let current = newConfig;
+                    
+                    // Create missing nested objects
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (!current[keys[i]]) {
+                            current[keys[i]] = {};
+                        }
+                        current = current[keys[i]];
+                    }
+                    
+                    // Store as-is, type conversion happens onBlur for numbers
+                    current[keys[keys.length - 1]] = value;
+                    
+                    return newConfig;
+                });
             };
 
             const getField = (path) => {
@@ -949,7 +950,7 @@
                 return current;
             };
 
-            const FormField = ({ label, path, type = 'text', options = null, disabled = false }) => {
+            const FormField = ({ label, path, type = 'text', options = null, disabled = false, helpText = null, placeholder = '' }) => {
                 const value = getField(path);
                 
                 return (
@@ -959,12 +960,12 @@
                         </label>
                         {type === 'select' ? (
                             <select
-                                value={value}
+                                value={value === null || value === undefined ? '' : value}
                                 onChange={(e) => updateField(path, e.target.value)}
                                 disabled={!editing || disabled}
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
                             >
-                                {options.map(opt => (
+                                {options && options.map(opt => (
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                             </select>
@@ -976,17 +977,39 @@
                                     onChange={(e) => updateField(path, e.target.checked)}
                                     disabled={!editing || disabled}
                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:bg-gray-100"
+                                    style={{ cursor: (!editing || disabled) ? 'not-allowed' : 'pointer' }}
                                 />
                                 <span className="ml-2 text-sm text-gray-600">{(value === true || value === 'true') ? 'Enabled' : 'Disabled'}</span>
                             </div>
+                        ) : type === 'number' ? (
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                value={value === null || value === undefined ? '' : value}
+                                onChange={(e) => updateField(path, e.target.value)}
+                                onBlur={(e) => {
+                                    // Convert to number only when done typing
+                                    const numValue = e.target.value === '' ? '' : Number(e.target.value);
+                                    if (!isNaN(numValue) || e.target.value === '') {
+                                        updateField(path, numValue);
+                                    }
+                                }}
+                                disabled={!editing || disabled}
+                                placeholder={placeholder}
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
+                            />
                         ) : (
                             <input
                                 type={type}
-                                value={value || ''}
+                                value={value === null || value === undefined ? '' : value}
                                 onChange={(e) => updateField(path, e.target.value)}
                                 disabled={!editing || disabled}
+                                placeholder={placeholder}
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
                             />
+                        )}
+                        {helpText && (
+                            <p className="mt-1 text-xs text-gray-500">{helpText}</p>
                         )}
                     </div>
                 );
