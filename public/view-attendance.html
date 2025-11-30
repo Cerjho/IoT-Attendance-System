@@ -413,6 +413,12 @@
         const VERIFY_API = 'https://pi-iot.tail5a6c2.ts.net:8080/api/verify-url';
         
         async function verifySignedURL() {
+            // TEMPORARY: Skip signature verification until public API is available
+            // Parents cannot access Tailscale URL from outside network
+            console.warn('Signature verification disabled - running in unsigned mode');
+            return { valid: true, student_id: studentId };
+            
+            /* DISABLED - Requires publicly accessible API
             // If no signature, assume old-style unsigned URL (backward compatibility)
             if (!sig || !expires) {
                 console.log('No signature - using legacy unsigned URL');
@@ -438,6 +444,7 @@
                 console.warn('Verification API unavailable - falling back to unsigned mode');
                 return { valid: true, student_id: studentId };
             }
+            */
         }
         
         async function loadAttendance() {

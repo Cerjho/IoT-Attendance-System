@@ -14,6 +14,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -104,8 +105,15 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("X-XSS-Protection", "1; mode=block")
         self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-        # CORS - restrict in production
-        allowed_origin = self.headers.get('Origin', '*')
+        # CORS - allow GitHub Pages and local origins
+        origin = self.headers.get('Origin', '')
+        allowed_origins = [
+            'https://cerjho.github.io',
+            'http://localhost:8080',
+            'http://127.0.0.1:8080',
+            'http://192.168.1.22:8080'
+        ]
+        allowed_origin = origin if origin in allowed_origins else '*'
         self.send_header("Access-Control-Allow-Origin", allowed_origin)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
@@ -122,7 +130,15 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("X-XSS-Protection", "1; mode=block")
         self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-        allowed_origin = self.headers.get('Origin', '*')
+        # CORS for text responses
+        origin = self.headers.get('Origin', '')
+        allowed_origins = [
+            'https://cerjho.github.io',
+            'http://localhost:8080',
+            'http://127.0.0.1:8080',
+            'http://192.168.1.22:8080'
+        ]
+        allowed_origin = origin if origin in allowed_origins else '*'
         self.send_header("Access-Control-Allow-Origin", allowed_origin)
         self.send_header("Access-Control-Allow-Credentials", "true")
         self.end_headers()
@@ -130,13 +146,27 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         """Handle CORS preflight requests."""
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", self.headers.get('Origin', '*'))
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
-        self.send_header("Access-Control-Allow-Credentials", "true")
-        self.send_header("Access-Control-Max-Age", "86400")
-        self.end_headers()
+        origin = self.headers.get('Origin', '')
+        
+        # Allow GitHub Pages and local origins
+        allowed_origins = [
+            'https://cerjho.github.io',
+            'http://localhost:8080',
+            'http://127.0.0.1:8080',
+            'http://192.168.1.22:8080'
+        ]
+        
+        if origin in allowed_origins or origin == '':
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", origin if origin else '*')
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Authorization, X-API-Key, Content-Type")
+            self.send_header("Access-Control-Allow-Credentials", "true")
+            self.send_header("Access-Control-Max-Age", "86400")
+            self.end_headers()
+        else:
+            self.send_response(403)
+            self.end_headers()
 
     def do_POST(self):
         """Handle POST requests for device management."""
@@ -267,8 +297,11 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 self._send_json_response({"error": "Failed to load dashboard"}, 500)
                 return
         
-        # Check authentication for API endpoints
-        if not self._check_authentication():
+        # Public endpoints (no authentication required)
+        public_endpoints = ["/health", "/api/verify-url"]
+        
+        # Check authentication for protected API endpoints only
+        if path not in public_endpoints and not self._check_authentication():
             self._send_json_response({
                 "error": "Unauthorized",
                 "message": "Valid API key required. Use Authorization: Bearer <key> or X-API-Key: <key> header"
@@ -278,6 +311,9 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         try:
             if path == "/health":
                 self._handle_health()
+            elif path == "/api/verify-url":
+                # Public endpoint - parents' browsers need access without auth
+                self._handle_verify_url(query_params)
             elif path == "/status":
                 self._handle_status()
             elif path == "/metrics":
@@ -293,8 +329,6 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 self._handle_config()
             elif path == "/system/info":
                 self._handle_system_info()
-            elif path == "/api/verify-url":
-                self._handle_verify_url(query_params)
             # Multi-device endpoints
             elif path == "/devices":
                 self._handle_devices_list()
@@ -962,23 +996,12 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 }, 403)
                 return
             
-            # Look up student UUID from student_number
-            # Query local database or Supabase
-            student_uuid = self._get_student_uuid(verified_student_id)
-            
-            if not student_uuid:
-                self._send_json_response({
-                    "valid": False,
-                    "error": "Student not found"
-                }, 404)
-                return
-            
-            # Valid - return success and log access
-            logger.info(f"✅ Valid URL access: student={verified_student_id} ip={client_ip} expires={datetime.fromtimestamp(int(expires)).isoformat()}")
+            # Valid signature! The verified_student_id is the UUID
+            # No need to look up - just return success
+            logger.info(f"✅ Valid URL access: student_uuid={verified_student_id} ip={client_ip} expires={datetime.fromtimestamp(int(expires)).isoformat()}")
             self._send_json_response({
                 "valid": True,
-                "student_id": verified_student_id,
-                "student_uuid": student_uuid,
+                "student_uuid": verified_student_id,  # This is the UUID from the URL
                 "expires_at": datetime.fromtimestamp(int(expires)).isoformat()
             })
             
