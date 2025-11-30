@@ -219,11 +219,13 @@
     "test_url": "https://www.google.com"
   },
   "sms_notifications": {
-    "enabled": false,
+    "enabled": "false",
     "username": "${SMS_USERNAME}",
     "password": "${SMS_PASSWORD}",
     "device_id": "${SMS_DEVICE_ID}",
     "api_url": "${SMS_API_URL}",
+    "use_signed_urls": true,
+    "signed_url_expiry_hours": 48,
     "login_message_template": "📚 SCHOOL\n\n✅ CHECK-IN: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
     "logout_message_template": "📚 SCHOOL\n\n🏁 CHECK-OUT: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
     "late_arrival_template": "⚠️ LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n📅 {date}\n\nView: {attendance_link}",

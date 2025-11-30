@@ -398,17 +398,58 @@
     </div>
     
     <script>
-        // Get student ID from URL parameter
+        // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const studentId = urlParams.get('student_id');
+        const expires = urlParams.get('expires');
+        const sig = urlParams.get('sig');
         
         // Supabase configuration (using public anon key - safe for client-side)
         const SUPABASE_URL = 'https://ddblgwzylvwuucnpmtzi.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkYmxnd3p5bHZ3dXVjbnBtdHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDM4MjIsImV4cCI6MjA3OTM3OTgyMn0.EL7xhE0SbgvJ_R8ZAlkawOqRMi3yYMGFbGkqBMWMaJI';
         
+        // Verification API endpoint (dashboard on Pi device)
+        const VERIFY_API = 'http://192.168.1.22:8080/api/verify-url';
+        
+        async function verifySignedURL() {
+            // If no signature, assume old-style unsigned URL (backward compatibility)
+            if (!sig || !expires) {
+                console.log('No signature - using legacy unsigned URL');
+                return { valid: true, student_id: studentId };
+            }
+            
+            // Verify signature via API
+            try {
+                const verifyUrl = `${VERIFY_API}?student_id=${studentId}&expires=${expires}&sig=${encodeURIComponent(sig)}`;
+                const response = await fetch(verifyUrl);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    return { valid: false, error: error.error || 'Invalid or expired link' };
+                }
+                
+                const result = await response.json();
+                return result;
+                
+            } catch (error) {
+                console.error('Verification API error:', error);
+                // If API unavailable, fall back to unsigned mode (graceful degradation)
+                console.warn('Verification API unavailable - falling back to unsigned mode');
+                return { valid: true, student_id: studentId };
+            }
+        }
+        
         async function loadAttendance() {
             if (!studentId) {
                 showError('No student ID provided. Please use the link from your SMS.');
+                return;
+            }
+            
+            // Verify signed URL first
+            const verification = await verifySignedURL();
+            
+            if (!verification.valid) {
+                showError(`🔒 ${verification.error || 'Invalid or expired link'}<br><br>Please request a new link by scanning your QR code again.`, false);
                 return;
             }
             

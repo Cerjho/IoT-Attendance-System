@@ -293,6 +293,8 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 self._handle_config()
             elif path == "/system/info":
                 self._handle_system_info()
+            elif path == "/api/verify-url":
+                self._handle_verify_url(query_params)
             # Multi-device endpoints
             elif path == "/devices":
                 self._handle_devices_list()
@@ -888,6 +890,130 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             else:
                 return None
         return current
+
+    def _handle_verify_url(self, query_params: Dict):
+        """
+        Verify signed URL and return student UUID if valid.
+        
+        Query parameters:
+            student_id: Student number
+            expires: Unix timestamp
+            sig: HMAC signature
+        
+        Returns:
+            200 with student UUID if valid
+            403 if invalid or expired
+        """
+        try:
+            # Extract parameters
+            student_id = query_params.get('student_id', [None])[0]
+            expires = query_params.get('expires', [None])[0]
+            sig = query_params.get('sig', [None])[0]
+            
+            if not all([student_id, expires, sig]):
+                self._send_json_response({
+                    "valid": False,
+                    "error": "Missing required parameters (student_id, expires, sig)"
+                }, 400)
+                return
+            
+            # Import URLSigner
+            from src.auth.url_signer import URLSigner
+            
+            # Get signing secret from config or env
+            secret = os.environ.get('URL_SIGNING_SECRET')
+            if not secret:
+                # Fallback to config if env not set
+                secret = self.config.get('url_signing', {}).get('secret')
+            
+            if not secret:
+                logger.error("URL_SIGNING_SECRET not configured")
+                self._send_json_response({
+                    "valid": False,
+                    "error": "URL signing not configured"
+                }, 500)
+                return
+            
+            # Create signer and verify
+            signer = URLSigner(secret)
+            
+            # Reconstruct URL for verification
+            base_url = "https://dummy.com"  # URL doesn't matter, only params
+            verify_url = f"{base_url}?student_id={student_id}&expires={expires}&sig={sig}"
+            
+            is_valid, verified_student_id, error = signer.verify_url(verify_url)
+            
+            if not is_valid:
+                logger.warning(f"Invalid signed URL for student {student_id}: {error}")
+                self._send_json_response({
+                    "valid": False,
+                    "error": error or "Invalid signature"
+                }, 403)
+                return
+            
+            # Look up student UUID from student_number
+            # Query local database or Supabase
+            student_uuid = self._get_student_uuid(verified_student_id)
+            
+            if not student_uuid:
+                self._send_json_response({
+                    "valid": False,
+                    "error": "Student not found"
+                }, 404)
+                return
+            
+            # Valid - return success
+            self._send_json_response({
+                "valid": True,
+                "student_id": verified_student_id,
+                "student_uuid": student_uuid,
+                "expires_at": datetime.fromtimestamp(int(expires)).isoformat()
+            })
+            
+        except Exception as e:
+            logger.error(f"Error verifying URL: {e}", exc_info=True)
+            self._send_json_response({
+                "valid": False,
+                "error": "Verification failed"
+            }, 500)
+    
+    def _get_student_uuid(self, student_number: str) -> Optional[str]:
+        """
+        Get student UUID from student number.
+        
+        Args:
+            student_number: Student number (e.g., "2021001")
+        
+        Returns:
+            Student UUID or None if not found
+        """
+        try:
+            # Try local database first
+            if self.db_path and Path(self.db_path).exists():
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT student_id FROM students WHERE student_id = ?",
+                    (student_number,)
+                )
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result:
+                    return result[0]
+            
+            # If not found locally, try Supabase
+            # Note: In production, you'd want to cache this
+            from src.cloud.cloud_sync import CloudSyncManager
+            
+            # This is a simplified lookup - in production you'd inject the cloud manager
+            # For now, return None and let the frontend handle the Supabase lookup
+            logger.warning(f"Student {student_number} not found in local cache")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error looking up student UUID: {e}")
+            return None
 
     def _sanitize_config(self, config: dict) -> dict:
         """Remove sensitive data from config."""

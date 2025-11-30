@@ -6,6 +6,7 @@ API Documentation: https://capcom6.github.io/android-sms-gateway/
 """
 import base64
 import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -114,6 +115,25 @@ class SMSNotifier:
 
         # Attendance view URL for public access (no account needed)
         self.attendance_view_url = config.get("attendance_view_url", "")
+        
+        # Signed URL configuration
+        self.use_signed_urls = config.get("use_signed_urls", True)
+        self.signed_url_expiry_hours = config.get("signed_url_expiry_hours", 48)
+        self.url_signing_secret = os.environ.get('URL_SIGNING_SECRET')
+        
+        # Initialize URL signer if signed URLs enabled
+        self.url_signer = None
+        if self.use_signed_urls:
+            if self.url_signing_secret and not self.url_signing_secret.startswith("${"):
+                try:
+                    from src.auth.url_signer import URLSigner
+                    self.url_signer = URLSigner(self.url_signing_secret)
+                    logger.info(f"URL signing enabled (expiry: {self.signed_url_expiry_hours}h)")
+                except Exception as e:
+                    logger.error(f"Failed to initialize URL signer: {e}")
+                    self.url_signer = None
+            else:
+                logger.warning("Signed URLs enabled but URL_SIGNING_SECRET not set in .env")
 
         # Notification preferences
         self.notification_prefs = config.get("notification_preferences", {})
@@ -192,6 +212,40 @@ class SMSNotifier:
         # Update last sent time
         self.recent_notifications[key] = self.time_provider.now()
         return True
+    
+    def _generate_attendance_link(self, student_id: str) -> str:
+        """
+        Generate attendance view link (signed or unsigned).
+        
+        Args:
+            student_id: Student identifier
+        
+        Returns:
+            Signed URL if signing enabled, plain URL otherwise
+        """
+        if not self.attendance_view_url:
+            return ""
+        
+        # Extract base URL (remove query params if any)
+        base_url = self.attendance_view_url.split('?')[0]
+        
+        # If URL signing enabled and signer initialized, generate signed URL
+        if self.use_signed_urls and self.url_signer:
+            try:
+                signed_url = self.url_signer.sign_url(
+                    base_url=base_url,
+                    student_id=student_id,
+                    expiry_hours=self.signed_url_expiry_hours
+                )
+                logger.debug(f"Generated signed URL for student {student_id}")
+                return signed_url
+            except Exception as e:
+                logger.error(f"Failed to generate signed URL: {e}")
+                # Fallback to unsigned URL
+                return self.attendance_view_url.format(student_id=student_id)
+        else:
+            # Plain URL without signature
+            return self.attendance_view_url.format(student_id=student_id)
 
     def send_attendance_notification(
         self,
@@ -250,10 +304,8 @@ class SMSNotifier:
         else:
             message_template = self.login_message_template
 
-        # Generate attendance view link
-        attendance_link = ""
-        if self.attendance_view_url:
-            attendance_link = self.attendance_view_url.format(student_id=student_id)
+        # Generate attendance view link (signed or unsigned)
+        attendance_link = self._generate_attendance_link(student_id)
 
         # Format message
         message = message_template.format(
