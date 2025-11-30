@@ -848,6 +848,81 @@
             );
         };
 
+        // FormField Component (moved outside to prevent recreation on every render)
+        const FormField = ({ label, path, type = 'text', options = null, disabled = false, helpText = null, placeholder = '', getField, updateField, editing }) => {
+            const value = getField(path);
+            
+            const handleNumberBlur = (e) => {
+                // Only convert on blur if it's actually a number field
+                if (type === 'number' && e.target.value !== '') {
+                    const numValue = Number(e.target.value);
+                    if (!isNaN(numValue)) {
+                        updateField(path, numValue);
+                    }
+                }
+            };
+            
+            return (
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {label}
+                    </label>
+                    {type === 'select' ? (
+                        <select
+                            value={value === null || value === undefined ? '' : value}
+                            onChange={(e) => updateField(path, e.target.value)}
+                            disabled={!editing || disabled}
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
+                        >
+                            {options && options.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    ) : type === 'checkbox' ? (
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                checked={value === true || value === 'true'}
+                                onChange={(e) => updateField(path, e.target.checked)}
+                                disabled={!editing || disabled}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:bg-gray-100 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <span className="ml-2 text-sm text-gray-600">
+                                {(value === true || value === 'true') ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                    ) : type === 'number' ? (
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={value === null || value === undefined ? '' : value}
+                            onChange={(e) => {
+                                // Allow typing any value, including partial numbers
+                                updateField(path, e.target.value);
+                            }}
+                            onBlur={handleNumberBlur}
+                            disabled={!editing || disabled}
+                            placeholder={placeholder || '0'}
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
+                        />
+                    ) : (
+                        <input
+                            type={type}
+                            value={value === null || value === undefined ? '' : value}
+                            onChange={(e) => updateField(path, e.target.value)}
+                            disabled={!editing || disabled}
+                            placeholder={placeholder}
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
+                        />
+                    )}
+                    {helpText && (
+                        <p className="mt-1 text-xs text-gray-500">{helpText}</p>
+                    )}
+                </div>
+            );
+        };
+
         // Configuration Editor Component
         const ConfigEditor = () => {
             const [config, setConfig] = useState(null);
@@ -950,80 +1025,6 @@
                 return current;
             };
 
-            const FormField = ({ label, path, type = 'text', options = null, disabled = false, helpText = null, placeholder = '' }) => {
-                const value = getField(path);
-                
-                const handleNumberBlur = (e) => {
-                    // Only convert on blur if it's actually a number field
-                    if (type === 'number' && e.target.value !== '') {
-                        const numValue = Number(e.target.value);
-                        if (!isNaN(numValue)) {
-                            updateField(path, numValue);
-                        }
-                    }
-                };
-                
-                return (
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            {label}
-                        </label>
-                        {type === 'select' ? (
-                            <select
-                                value={value === null || value === undefined ? '' : value}
-                                onChange={(e) => updateField(path, e.target.value)}
-                                disabled={!editing || disabled}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
-                            >
-                                {options && options.map(opt => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                        ) : type === 'checkbox' ? (
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    checked={value === true || value === 'true'}
-                                    onChange={(e) => updateField(path, e.target.checked)}
-                                    disabled={!editing || disabled}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:bg-gray-100 cursor-pointer disabled:cursor-not-allowed"
-                                />
-                                <span className="ml-2 text-sm text-gray-600">
-                                    {(value === true || value === 'true') ? 'Enabled' : 'Disabled'}
-                                </span>
-                            </div>
-                        ) : type === 'number' ? (
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                value={value === null || value === undefined ? '' : value}
-                                onChange={(e) => {
-                                    // Allow typing any value, including partial numbers
-                                    updateField(path, e.target.value);
-                                }}
-                                onBlur={handleNumberBlur}
-                                disabled={!editing || disabled}
-                                placeholder={placeholder || '0'}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
-                            />
-                        ) : (
-                            <input
-                                type={type}
-                                value={value === null || value === undefined ? '' : value}
-                                onChange={(e) => updateField(path, e.target.value)}
-                                disabled={!editing || disabled}
-                                placeholder={placeholder}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
-                            />
-                        )}
-                        {helpText && (
-                            <p className="mt-1 text-xs text-gray-500">{helpText}</p>
-                        )}
-                    </div>
-                );
-            };
-
             if (loading) return <div className="text-center p-4">Loading configuration...</div>;
 
             return (
@@ -1111,7 +1112,7 @@
                                 <div className="bg-blue-50 p-3 sm:p-4 rounded border border-blue-200">
                                     <h3 className="text-base sm:text-lg font-semibold mb-2 text-blue-900">🌐 Fleet Management</h3>
                                     <p className="text-xs sm:text-sm text-blue-700 mb-3 sm:mb-4">Controls multi-device features across the entire system</p>
-                                    <FormField label="Enable Multi-Device Management" path="admin_dashboard.multi_device_enabled" type="checkbox" />
+                                    <FormField label="Enable Multi-Device Management" path="admin_dashboard.multi_device_enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
                                 </div>
 
                                 {/* Global: Cloud Sync */}
@@ -1119,10 +1120,10 @@
                                     <h3 className="text-lg font-semibold mb-2 text-purple-900">☁️ Cloud Sync (Global)</h3>
                                     <p className="text-sm text-purple-700 mb-4">Applies to all devices in the fleet</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Enable Cloud Sync" path="cloud.enabled" type="checkbox" />
-                                        <FormField label="Retry Attempts" path="cloud.retry_attempts" type="number" />
-                                        <FormField label="Retry Delay (seconds)" path="cloud.retry_delay" type="number" />
-                                        <FormField label="Cleanup Photos After Sync" path="cloud.cleanup_photos_after_sync" type="checkbox" />
+                                        <FormField label="Enable Cloud Sync" path="cloud.enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Retry Attempts" path="cloud.retry_attempts" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Retry Delay (seconds)" path="cloud.retry_delay" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Cleanup Photos After Sync" path="cloud.cleanup_photos_after_sync" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1131,11 +1132,11 @@
                                     <h3 className="text-lg font-semibold mb-2 text-green-900">⏰ Schedule (Global)</h3>
                                     <p className="text-sm text-green-700 mb-4">Same schedule applied across all devices</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Morning Login Start" path="school_schedule.morning_class.login_window_start" />
-                                        <FormField label="Morning Login End" path="school_schedule.morning_class.login_window_end" />
-                                        <FormField label="Afternoon Login Start" path="school_schedule.afternoon_class.login_window_start" />
-                                        <FormField label="Afternoon Login End" path="school_schedule.afternoon_class.login_window_end" />
-                                        <FormField label="Late Threshold (minutes)" path="school_schedule.morning_class.late_threshold_minutes" type="number" />
+                                        <FormField label="Morning Login Start" path="school_schedule.morning_class.login_window_start" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Morning Login End" path="school_schedule.morning_class.login_window_end" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Afternoon Login Start" path="school_schedule.afternoon_class.login_window_start" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Afternoon Login End" path="school_schedule.afternoon_class.login_window_end" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Late Threshold (minutes)" path="school_schedule.morning_class.late_threshold_minutes" type="number" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1144,10 +1145,10 @@
                                     <h3 className="text-lg font-semibold mb-2 text-yellow-900">🖥️ Admin Dashboard (Global)</h3>
                                     <p className="text-sm text-yellow-700 mb-4">Central dashboard for fleet management</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Enable Dashboard" path="admin_dashboard.enabled" type="checkbox" />
-                                        <FormField label="Enable Authentication" path="admin_dashboard.auth_enabled" type="checkbox" />
-                                        <FormField label="Port" path="admin_dashboard.port" type="number" />
-                                        <FormField label="Host" path="admin_dashboard.host" />
+                                        <FormField label="Enable Dashboard" path="admin_dashboard.enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Enable Authentication" path="admin_dashboard.auth_enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Port" path="admin_dashboard.port" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Host" path="admin_dashboard.host" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1156,10 +1157,10 @@
                                     <h3 className="text-lg font-semibold mb-2 text-pink-900">📱 SMS Notifications (Global)</h3>
                                     <p className="text-sm text-pink-700 mb-4">SMS settings apply to all devices</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Enable SMS" path="sms_notifications.enabled" type="checkbox" />
-                                        <FormField label="Send on Check-In" path="sms_notifications.notification_preferences.check_in" type="checkbox" />
-                                        <FormField label="Send on Check-Out" path="sms_notifications.notification_preferences.check_out" type="checkbox" />
-                                        <FormField label="Send Late Alerts" path="sms_notifications.notification_preferences.late_arrival" type="checkbox" />
+                                        <FormField label="Enable SMS" path="sms_notifications.enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Send on Check-In" path="sms_notifications.notification_preferences.check_in" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Send on Check-Out" path="sms_notifications.notification_preferences.check_out" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Send Late Alerts" path="sms_notifications.notification_preferences.late_arrival" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
                             </>
@@ -1170,11 +1171,11 @@
                                     <h3 className="text-lg font-semibold mb-2 text-gray-800">🏷️ Device Identification</h3>
                                     <p className="text-sm text-gray-600 mb-4">Unique settings for this specific device</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Device ID" path="device_id" />
-                                        <FormField label="Device Name" path="device_name" />
-                                        <FormField label="Building" path="location.building" />
-                                        <FormField label="Floor" path="location.floor" />
-                                        <FormField label="Room" path="location.room" />
+                                        <FormField label="Device ID" path="device_id" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Device Name" path="device_name" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Building" path="location.building" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Floor" path="location.floor" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Room" path="location.room" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1183,10 +1184,10 @@
                                     <h3 className="text-lg font-semibold mb-2 text-indigo-900">📷 Camera (Device Specific)</h3>
                                     <p className="text-sm text-indigo-700 mb-4">Camera hardware configuration for this device</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Camera Index" path="camera.index" type="number" />
-                                        <FormField label="FPS" path="camera.fps" type="number" />
-                                        <FormField label="Resolution Width" path="camera.resolution.width" type="number" />
-                                        <FormField label="Resolution Height" path="camera.resolution.height" type="number" />
+                                        <FormField label="Camera Index" path="camera.index" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="FPS" path="camera.fps" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Resolution Width" path="camera.resolution.width" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Resolution Height" path="camera.resolution.height" type="number" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1195,10 +1196,10 @@
                                     <h3 className="text-lg font-semibold mb-2 text-teal-900">💾 Local Storage (Device)</h3>
                                     <p className="text-sm text-teal-700 mb-4">Local photo and data storage settings</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Cleanup Photos After Sync" path="cloud.cleanup_photos_after_sync" type="checkbox" />
-                                        <FormField label="Photo Retention Days" path="disk_monitor.photo_retention_days" type="number" />
-                                        <FormField label="Photo Max Size (MB)" path="disk_monitor.photo_max_size_mb" type="number" />
-                                        <FormField label="Log Retention Days" path="disk_monitor.log_retention_days" type="number" />
+                                        <FormField label="Cleanup Photos After Sync" path="cloud.cleanup_photos_after_sync" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Photo Retention Days" path="disk_monitor.photo_retention_days" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Photo Max Size (MB)" path="disk_monitor.photo_max_size_mb" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Log Retention Days" path="disk_monitor.log_retention_days" type="number" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1207,10 +1208,10 @@
                                     <h3 className="text-lg font-semibold mb-2 text-orange-900">🔧 Hardware Settings</h3>
                                     <p className="text-sm text-orange-700 mb-4">Device-specific hardware configuration</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="Enable Buzzer" path="buzzer.enabled" type="checkbox" />
-                                        <FormField label="Buzzer GPIO Pin" path="buzzer.gpio_pin" type="number" />
-                                        <FormField label="Enable RGB LED" path="rgb_led.enabled" type="checkbox" />
-                                        <FormField label="LED Brightness %" path="rgb_led.brightness" type="number" />
+                                        <FormField label="Enable Buzzer" path="buzzer.enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Buzzer GPIO Pin" path="buzzer.gpio_pin" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="Enable RGB LED" path="rgb_led.enabled" type="checkbox" getField={getField} updateField={updateField} editing={editing} />
+                                        <FormField label="LED Brightness %" path="rgb_led.brightness" type="number" getField={getField} updateField={updateField} editing={editing} />
                                     </div>
                                 </div>
 
@@ -1228,9 +1229,9 @@
                                     <div className="bg-gray-50 p-4 rounded border border-gray-200">
                                         <h3 className="text-lg font-semibold mb-4 text-gray-800">🔬 Advanced</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormField label="Network Connect Timeout (s)" path="network_timeouts.connect_timeout" type="number" />
-                                            <FormField label="Network Read Timeout (s)" path="network_timeouts.read_timeout" type="number" />
-                                            <FormField label="Shutdown Timeout (s)" path="shutdown.timeout" type="number" />
+                                            <FormField label="Network Connect Timeout (s)" path="network_timeouts.connect_timeout" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                            <FormField label="Network Read Timeout (s)" path="network_timeouts.read_timeout" type="number" getField={getField} updateField={updateField} editing={editing} />
+                                            <FormField label="Shutdown Timeout (s)" path="shutdown.timeout" type="number" getField={getField} updateField={updateField} editing={editing} />
                                         </div>
                                     </div>
                                 )}
