@@ -559,62 +559,64 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             
             logger.info("Configuration updated successfully")
             
-            # Auto-restart service and commit changes
-            import subprocess
-            restart_success = False
-            git_success = False
-            
-            try:
-                # Restart the dashboard service
-                result = subprocess.run(
-                    ['sudo', 'systemctl', 'restart', 'attendance-dashboard.service'],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                restart_success = (result.returncode == 0)
-                if restart_success:
-                    logger.info("Service restarted successfully")
-                else:
-                    logger.warning(f"Service restart failed: {result.stderr}")
-            except Exception as e:
-                logger.error(f"Failed to restart service: {e}")
-            
-            try:
-                # Git commit and push
-                subprocess.run(['git', 'add', 'config/config.json'], 
-                              cwd='/home/iot/attendance-system', check=True, timeout=5)
-                
-                commit_msg = f"config: Update configuration via dashboard\n\nBackup: {backup_path.name}\nTimestamp: {datetime.now().isoformat()}"
-                subprocess.run(['git', 'commit', '-m', commit_msg],
-                              cwd='/home/iot/attendance-system', check=True, timeout=10)
-                
-                subprocess.run(['git', 'push', 'origin', 'main'],
-                              cwd='/home/iot/attendance-system', check=True, timeout=30)
-                
-                git_success = True
-                logger.info("Configuration committed and pushed to Git")
-            except subprocess.CalledProcessError as e:
-                logger.warning(f"Git operations failed: {e}")
-            except Exception as e:
-                logger.error(f"Failed to commit/push config: {e}")
-            
-            response_message = "Configuration saved successfully"
-            if restart_success:
-                response_message += ". Service restarted"
-            else:
-                response_message += ". Manual restart required: sudo systemctl restart attendance-dashboard.service"
-            
-            if git_success:
-                response_message += ". Changes committed to Git"
-            
+            # Send response FIRST, then do async restart and git operations
             self._send_json_response({
                 "success": True,
-                "message": response_message,
+                "message": "Configuration saved successfully. Service will restart automatically.",
                 "backup": str(backup_path),
-                "auto_restart": restart_success,
-                "git_commit": git_success
+                "auto_restart": "pending",
+                "git_commit": "pending"
             })
+            
+            # Auto-restart service and commit changes (async, after response sent)
+            import subprocess
+            import threading
+            
+            def async_post_save():
+                restart_success = False
+                git_success = False
+                
+                try:
+                    # Restart the dashboard service
+                    result = subprocess.run(
+                        ['sudo', 'systemctl', 'restart', 'attendance-dashboard.service'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    restart_success = (result.returncode == 0)
+                    if restart_success:
+                        logger.info("Service restarted successfully")
+                    else:
+                        logger.warning(f"Service restart failed: {result.stderr}")
+                except Exception as e:
+                    logger.error(f"Failed to restart service: {e}")
+            
+                try:
+                    # Git commit and push
+                    subprocess.run(['git', 'add', 'config/config.json'], 
+                                  cwd='/home/iot/attendance-system', check=True, timeout=5)
+                    
+                    commit_msg = f"config: Update configuration via dashboard\n\nBackup: {backup_path.name}\nTimestamp: {datetime.now().isoformat()}"
+                    subprocess.run(['git', 'commit', '-m', commit_msg],
+                                  cwd='/home/iot/attendance-system', check=True, timeout=10)
+                    
+                    subprocess.run(['git', 'push', 'origin', 'main'],
+                                  cwd='/home/iot/attendance-system', check=True, timeout=30)
+                    
+                    git_success = True
+                    logger.info("Configuration committed and pushed to Git")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Git operations failed: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to commit/push config: {e}")
+                
+                logger.info(f"Post-save operations completed: restart={restart_success}, git={git_success}")
+            
+            # Run async operations in background thread
+            thread = threading.Thread(target=async_post_save, daemon=True)
+            thread.start()
+            return  # Response already sent above
             
         except Exception as e:
             logger.error(f"Failed to update config: {e}", exc_info=True)
