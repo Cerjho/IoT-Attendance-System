@@ -12,25 +12,52 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigLoader:
-    """Loads and manages application configuration."""
+    """Loads and manages application configuration with layered loading.
+    
+    Configuration layers (in order of precedence):
+    1. defaults.json - Factory defaults for all optional settings
+    2. config.json - Device-specific settings (safe to commit)
+    3. Environment variables - Secrets and overrides (from .env)
+    4. Explicit env mappings - Final overrides
+    """
 
-    def __init__(self, config_file: str = None):
+    # Sensitive fields that should NEVER be in config.json
+    SENSITIVE_FIELDS = {
+        'cloud.url', 'cloud.api_key',
+        'sms_notifications.username', 'sms_notifications.password',
+        'sms_notifications.device_id', 'sms_notifications.api_url',
+        'device_id'  # Can be in both, but prefer env
+    }
+
+    def __init__(self, config_file: str = None, defaults_file: str = "config/defaults.json"):
         """
-        Initialize config loader.
+        Initialize config loader with layered configuration.
 
         Args:
-            config_file: Path to config JSON file
+            config_file: Path to device config JSON file
+            defaults_file: Path to defaults JSON file
         """
         self.config: Dict[str, Any] = {}
         self.config_file = config_file
+        self.defaults_file = defaults_file
 
+        # Layer 1: Load defaults first
+        if os.path.exists(defaults_file):
+            with open(defaults_file) as f:
+                self.config = json.load(f)
+            logger.info(f"Defaults loaded from {defaults_file}")
+
+        # Layer 2: Overlay device config
         if config_file and os.path.exists(config_file):
-            self.load_from_file(config_file)
+            with open(config_file) as f:
+                device_config = json.load(f)
+            self.config = self._deep_merge(self.config, device_config)
+            logger.info(f"Config loaded from {config_file}")
 
-        # Resolve environment variable placeholders in config
+        # Layer 3: Resolve ${ENV_VAR} placeholders
         self._resolve_env_placeholders(self.config)
 
-        # Load from environment variables (override file config)
+        # Layer 4: Override with explicit env mappings
         self.load_from_env()
 
     def load_from_file(self, filepath: str) -> bool:
@@ -85,6 +112,52 @@ class ConfigLoader:
                 config[key] = {}
             config = config[key]
         config[path[-1]] = value
+
+    def _deep_merge(self, base: dict, override: dict) -> dict:
+        """Deep merge override dict into base dict.
+        
+        Args:
+            base: Base configuration
+            override: Override configuration
+            
+        Returns:
+            Merged configuration
+        """
+        result = base.copy()
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def get_sensitive_fields(self) -> set:
+        """Return set of field paths that should never be committed to git."""
+        return self.SENSITIVE_FIELDS.copy()
+
+    def export_for_commit(self) -> dict:
+        """Export config safe for version control (secrets replaced with placeholders).
+        
+        Returns:
+            Config dict with secrets as ${PLACEHOLDERS}
+        """
+        export = json.loads(json.dumps(self.config))  # Deep copy
+        
+        # Replace sensitive values with placeholders
+        sensitive_replacements = {
+            ('cloud', 'url'): '${SUPABASE_URL}',
+            ('cloud', 'api_key'): '${SUPABASE_KEY}',
+            ('sms_notifications', 'username'): '${SMS_USERNAME}',
+            ('sms_notifications', 'password'): '${SMS_PASSWORD}',
+            ('sms_notifications', 'device_id'): '${SMS_DEVICE_ID}',
+            ('sms_notifications', 'api_url'): '${SMS_API_URL}',
+            ('device_id',): '${DEVICE_ID}',
+        }
+        
+        for path, placeholder in sensitive_replacements.items():
+            self._set_nested_value(export, path, placeholder)
+        
+        return export
 
     def _resolve_env_placeholders(self, config: dict) -> None:
         """Recursively resolve ${ENV_VAR} placeholders in config values."""

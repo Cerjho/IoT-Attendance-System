@@ -529,12 +529,37 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         self._send_json_response(safe_config)
 
     def _handle_config_update(self, new_config: Dict):
-        """Update configuration file."""
+        """Update configuration file (non-sensitive fields only)."""
         import os
         import shutil
         from pathlib import Path
+        from src.utils.config_loader import ConfigLoader
         
         try:
+            # Validate no sensitive fields in update
+            blocked_fields = []
+            sensitive_paths = {
+                'cloud.url', 'cloud.api_key',
+                'sms_notifications.username', 'sms_notifications.password',
+                'sms_notifications.device_id', 'sms_notifications.api_url'
+            }
+            
+            # Check if any sensitive fields are being modified
+            for path in self._get_update_paths(new_config):
+                if path in sensitive_paths:
+                    # Check if value is not a placeholder
+                    value = self._get_nested_value(new_config, path)
+                    if value and not (isinstance(value, str) and value.startswith('${') and value.endswith('}')):
+                        blocked_fields.append(path)
+            
+            if blocked_fields:
+                self._send_json_response({
+                    "error": "Cannot update sensitive fields via dashboard",
+                    "blocked_fields": blocked_fields,
+                    "message": "Sensitive credentials must be set via environment variables (.env file)"
+                }, 403)
+                return
+            
             config_path = Path("config/config.json")
             
             # Backup existing config
@@ -543,19 +568,20 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 shutil.copy2(config_path, backup_path)
                 logger.info(f"Config backed up to {backup_path}")
             
-            # Validate new config has required fields
-            required_fields = ['device_id', 'cloud', 'admin_dashboard']
-            for field in required_fields:
-                if field not in new_config:
-                    self._send_json_response({
-                        "error": f"Missing required field: {field}",
-                        "required_fields": required_fields
-                    }, 400)
-                    return
+            # Load current config and merge updates
+            config_loader = ConfigLoader(str(config_path))
+            current = config_loader.get_all()
             
-            # Write new config
+            # Deep merge new config into current
+            merged = config_loader._deep_merge(current, new_config)
+            
+            # Export with placeholders for sensitive fields (never commit secrets)
+            config_loader.config = merged
+            safe_export = config_loader.export_for_commit()
+            
+            # Write safe config (with placeholders)
             with open(config_path, 'w') as f:
-                json.dump(new_config, f, indent=2)
+                json.dump(safe_export, f, indent=2)
             
             logger.info("Configuration updated successfully")
             
@@ -825,6 +851,43 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             return uptime
         except Exception:
             return None
+
+    def _get_update_paths(self, obj: dict, prefix='') -> list:
+        """Recursively get all field paths in dict.
+        
+        Args:
+            obj: Dictionary to traverse
+            prefix: Current path prefix
+            
+        Returns:
+            List of dot-notation paths
+        """
+        paths = []
+        for key, value in obj.items():
+            path = f"{prefix}.{key}" if prefix else key
+            paths.append(path)
+            if isinstance(value, dict):
+                paths.extend(self._get_update_paths(value, path))
+        return paths
+
+    def _get_nested_value(self, obj: dict, path: str):
+        """Get nested value using dot-notation path.
+        
+        Args:
+            obj: Dictionary to query
+            path: Dot-notation path (e.g., 'cloud.api_key')
+            
+        Returns:
+            Value at path or None
+        """
+        keys = path.split('.')
+        current = obj
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return None
+        return current
 
     def _sanitize_config(self, config: dict) -> dict:
         """Remove sensitive data from config."""

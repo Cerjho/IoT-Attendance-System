@@ -70,5 +70,11 @@ htmlcov/
 *.backup
 *.bak
 *~
+config/config.backup.*.json
+config/*.pre-security-*.json
+
+# Environment & Secrets
 .env
+.env.*
+!.env.example
 env

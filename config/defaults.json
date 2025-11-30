@@ -1,16 +1,16 @@
 {
   "camera": {
-    "index": "0",
+    "index": 0,
     "resolution": {
-      "width": "640",
-      "height": "480"
+      "width": 640,
+      "height": 480
     },
     "fps": 30,
     "picamera": {
       "exposure": {
         "mode": "auto",
         "manual_exposure_us": 10000,
-        "manual_analogue_gain": 1
+        "manual_analogue_gain": 1.0
       },
       "awb": {
         "mode": "auto"
@@ -39,7 +39,7 @@
     "denoise_searchWindowSize": 21,
     "awb_grayworld_enabled": false,
     "clahe_enabled": false,
-    "clahe_clip_limit": 2,
+    "clahe_clip_limit": 2.0,
     "clahe_tile_grid": 8,
     "sharpen_enabled": false,
     "sharpen_amount": 0.4,
@@ -64,7 +64,7 @@
     "afternoon_class": {
       "start_time": "13:00",
       "end_time": "17:00",
-      "login_window_start": "",
+      "login_window_start": "12:30",
       "login_window_end": "13:30",
       "logout_window_start": "16:30",
       "logout_window_end": "17:30",
@@ -132,24 +132,20 @@
     "export_format": "prometheus"
   },
   "admin_dashboard": {
-    "enabled": true,
+    "enabled": false,
     "host": "0.0.0.0",
     "port": 8080,
-    "auth_enabled": true,
-    "multi_device_enabled": true,
-    "allowed_ips": [
-      "192.168.1.0/24",
-      "127.0.0.1",
-      "100.64.0.0/10"
-    ]
+    "auth_enabled": false,
+    "multi_device_enabled": false,
+    "allowed_ips": []
   },
   "device_id": "${DEVICE_ID}",
-  "device_name": "IT Lab - Main Device",
+  "device_name": "Attendance Device",
   "location": {
-    "building": "Main Building",
-    "floor": "Floor 1",
-    "room": "IT Lab",
-    "description": "Main Building - Floor 1 IT Lab"
+    "building": "",
+    "floor": "",
+    "room": "",
+    "description": ""
   },
   "alerts": {
     "enabled": true,
@@ -176,77 +172,29 @@
     "low_light_mode": "off"
   },
   "buzzer": {
-    "enabled": true,
+    "enabled": false,
     "gpio_pin": 23,
-    "qr_detected_pattern": [
-      100,
-      50,
-      100
-    ],
-    "face_detected_pattern": [
-      50
-    ],
-    "success_pattern": [
-      200,
-      100,
-      200,
-      100,
-      200
-    ],
-    "error_pattern": [
-      1000
-    ],
-    "duplicate_pattern": [
-      100,
-      100,
-      100,
-      100,
-      100
-    ]
+    "qr_detected_pattern": [100, 50, 100],
+    "face_detected_pattern": [50],
+    "success_pattern": [200, 100, 200, 100, 200],
+    "error_pattern": [1000],
+    "duplicate_pattern": [100, 100, 100, 100, 100]
   },
   "rgb_led": {
-    "enabled": true,
+    "enabled": false,
     "gpio_pins": {
       "red": 22,
       "green": 27,
       "blue": 17
     },
     "colors": {
-      "qr_detected": [
-        0,
-        0,
-        255
-      ],
-      "face_detected": [
-        255,
-        165,
-        0
-      ],
-      "success": [
-        0,
-        255,
-        0
-      ],
-      "error": [
-        255,
-        0,
-        0
-      ],
-      "duplicate": [
-        255,
-        255,
-        0
-      ],
-      "late": [
-        255,
-        165,
-        0
-      ],
-      "processing": [
-        255,
-        0,
-        255
-      ]
+      "qr_detected": [0, 0, 255],
+      "face_detected": [255, 165, 0],
+      "success": [0, 255, 0],
+      "error": [255, 0, 0],
+      "duplicate": [255, 255, 0],
+      "late": [255, 165, 0],
+      "processing": [255, 0, 255]
     },
     "brightness": 100,
     "use_full_brightness": true,
@@ -254,7 +202,7 @@
     "hold_duration_ms": 2000
   },
   "power_button": {
-    "enabled": true,
+    "enabled": false,
     "gpio_pin": 3,
     "short_press_seconds": 3,
     "long_press_seconds": 5,
@@ -271,19 +219,19 @@
     "test_url": "https://www.google.com"
   },
   "sms_notifications": {
-    "enabled": "true",
+    "enabled": false,
     "username": "${SMS_USERNAME}",
     "password": "${SMS_PASSWORD}",
     "device_id": "${SMS_DEVICE_ID}",
     "api_url": "${SMS_API_URL}",
-    "login_message_template": "\ud83d\udcda MABINI HIGH SCHOOL\n\n\u2705 CHECK-IN: {student_name}\n\ud83d\udd50 {time} | {date}\n\nView: {attendance_link}",
-    "logout_message_template": "\ud83d\udcda MABINI HIGH SCHOOL\n\n\ud83c\udfc1 CHECK-OUT: {student_name}\n\ud83d\udd50 {time} | {date}\n\nView: {attendance_link}",
-    "late_arrival_template": "\u26a0\ufe0f LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n\ud83d\udcc5 {date}\n\nView: {attendance_link}\n\n- Mabini High School",
-    "no_checkout_template": "\u26a0\ufe0f NO CHECK-OUT\n\n{student_name} did not check out today.\nLast seen: {last_checkin_time}\n\nPlease verify.\n\nView: {attendance_link}\n\n- Mabini High School",
-    "absence_alert_template": "\u2757 ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}\n\n- Mabini High School",
-    "weekly_summary_template": "\ud83d\udcca WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}\n\n- Mabini High School",
-    "monthly_summary_template": "\ud83d\udcca MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}\n\n- Mabini High School",
-    "attendance_view_url": "https://cerjho.github.io/IoT-Attendance-System/view-attendance.html?student_id={student_id}",
+    "login_message_template": "📚 SCHOOL\n\n✅ CHECK-IN: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
+    "logout_message_template": "📚 SCHOOL\n\n🏁 CHECK-OUT: {student_name}\n🕐 {time} | {date}\n\nView: {attendance_link}",
+    "late_arrival_template": "⚠️ LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n📅 {date}\n\nView: {attendance_link}",
+    "no_checkout_template": "⚠️ NO CHECK-OUT\n\n{student_name} did not check out today.\nLast seen: {last_checkin_time}\n\nPlease verify.\n\nView: {attendance_link}",
+    "absence_alert_template": "❗ ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}",
+    "weekly_summary_template": "📊 WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}",
+    "monthly_summary_template": "📊 MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}",
+    "attendance_view_url": "https://example.com/attendance?student_id={student_id}",
     "send_on_capture": true,
     "send_late_alerts": true,
     "send_absence_alerts": false,
