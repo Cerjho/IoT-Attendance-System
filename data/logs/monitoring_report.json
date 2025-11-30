@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-11-30T21:32:44.803618",
+  "status": "issues",
+  "alerts": [
+    "\u274c attendance-system not running",
+    "\u26a0\ufe0f  Large sync queue: 144 records"
+  ]
+}
