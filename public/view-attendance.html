@@ -409,7 +409,8 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkYmxnd3p5bHZ3dXVjbnBtdHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDM4MjIsImV4cCI6MjA3OTM3OTgyMn0.EL7xhE0SbgvJ_R8ZAlkawOqRMi3yYMGFbGkqBMWMaJI';
         
         // Verification API endpoint (dashboard on Pi device)
-        const VERIFY_API = 'http://192.168.1.22:8080/api/verify-url';
+        // Use Tailscale HTTPS URL to avoid mixed content blocking on GitHub Pages
+        const VERIFY_API = 'https://pi-iot.tail5a6c2.ts.net:8080/api/verify-url';
         
         async function verifySignedURL() {
             // If no signature, assume old-style unsigned URL (backward compatibility)
