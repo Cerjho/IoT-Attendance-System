@@ -953,6 +953,16 @@
             const FormField = ({ label, path, type = 'text', options = null, disabled = false, helpText = null, placeholder = '' }) => {
                 const value = getField(path);
                 
+                const handleNumberBlur = (e) => {
+                    // Only convert on blur if it's actually a number field
+                    if (type === 'number' && e.target.value !== '') {
+                        const numValue = Number(e.target.value);
+                        if (!isNaN(numValue)) {
+                            updateField(path, numValue);
+                        }
+                    }
+                };
+                
                 return (
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -976,26 +986,25 @@
                                     checked={value === true || value === 'true'}
                                     onChange={(e) => updateField(path, e.target.checked)}
                                     disabled={!editing || disabled}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:bg-gray-100"
-                                    style={{ cursor: (!editing || disabled) ? 'not-allowed' : 'pointer' }}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:bg-gray-100 cursor-pointer disabled:cursor-not-allowed"
                                 />
-                                <span className="ml-2 text-sm text-gray-600">{(value === true || value === 'true') ? 'Enabled' : 'Disabled'}</span>
+                                <span className="ml-2 text-sm text-gray-600">
+                                    {(value === true || value === 'true') ? 'Enabled' : 'Disabled'}
+                                </span>
                             </div>
                         ) : type === 'number' ? (
                             <input
                                 type="text"
                                 inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={value === null || value === undefined ? '' : value}
-                                onChange={(e) => updateField(path, e.target.value)}
-                                onBlur={(e) => {
-                                    // Convert to number only when done typing
-                                    const numValue = e.target.value === '' ? '' : Number(e.target.value);
-                                    if (!isNaN(numValue) || e.target.value === '') {
-                                        updateField(path, numValue);
-                                    }
+                                onChange={(e) => {
+                                    // Allow typing any value, including partial numbers
+                                    updateField(path, e.target.value);
                                 }}
+                                onBlur={handleNumberBlur}
                                 disabled={!editing || disabled}
-                                placeholder={placeholder}
+                                placeholder={placeholder || '0'}
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
                             />
                         ) : (
