@@ -277,7 +277,7 @@
     "device_id": "${SMS_DEVICE_ID}",
     "api_url": "${SMS_API_URL}",
     "use_signed_urls": true,
-    "signed_url_expiry_hours": 48,
+    "signed_url_expiry_hours": 24,
     "login_message_template": "\ud83d\udcda MABINI HIGH SCHOOL\n\n\u2705 CHECK-IN: {student_name}\n\ud83d\udd50 {time} | {date}\n\nView: {attendance_link}",
     "logout_message_template": "\ud83d\udcda MABINI HIGH SCHOOL\n\n\ud83c\udfc1 CHECK-OUT: {student_name}\n\ud83d\udd50 {time} | {date}\n\nView: {attendance_link}",
     "late_arrival_template": "\u26a0\ufe0f LATE ARRIVAL\n\n{student_name} checked in at {time}\n({minutes_late} mins late)\n\ud83d\udcc5 {date}\n\nView: {attendance_link}\n\n- Mabini High School",

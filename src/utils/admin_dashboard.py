@@ -903,6 +903,7 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
         Returns:
             200 with student UUID if valid
             403 if invalid or expired
+            429 if rate limit exceeded
         """
         try:
             # Extract parameters
@@ -915,6 +916,16 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                     "valid": False,
                     "error": "Missing required parameters (student_id, expires, sig)"
                 }, 400)
+                return
+            
+            # Rate limiting check
+            client_ip = self.client_address[0]
+            allowed, error = self._check_rate_limit(student_id, client_ip)
+            if not allowed:
+                self._send_json_response({
+                    "valid": False,
+                    "error": error
+                }, 429)
                 return
             
             # Import URLSigner
@@ -962,7 +973,8 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 }, 404)
                 return
             
-            # Valid - return success
+            # Valid - return success and log access
+            logger.info(f"✅ Valid URL access: student={verified_student_id} ip={client_ip} expires={datetime.fromtimestamp(int(expires)).isoformat()}")
             self._send_json_response({
                 "valid": True,
                 "student_id": verified_student_id,
@@ -976,6 +988,47 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 "valid": False,
                 "error": "Verification failed"
             }, 500)
+    
+    def _check_rate_limit(self, student_id: str, client_ip: str) -> Tuple[bool, Optional[str]]:
+        """
+        Check rate limiting for attendance URL verification.
+        
+        Args:
+            student_id: Student identifier
+            client_ip: Client IP address
+        
+        Returns:
+            Tuple of (allowed, error_message)
+        """
+        if not hasattr(self, '_rate_limit_cache'):
+            self._rate_limit_cache = {}
+        
+        now = time.time()
+        key = f"{student_id}:{client_ip}"
+        
+        # Clean old entries (older than 1 hour)
+        self._rate_limit_cache = {
+            k: v for k, v in self._rate_limit_cache.items()
+            if now - v['first_request'] < 3600
+        }
+        
+        if key not in self._rate_limit_cache:
+            self._rate_limit_cache[key] = {
+                'count': 1,
+                'first_request': now
+            }
+            return True, None
+        
+        entry = self._rate_limit_cache[key]
+        entry['count'] += 1
+        
+        # Rate limit: 20 requests per hour per student per IP
+        max_requests = 20
+        if entry['count'] > max_requests:
+            logger.warning(f"Rate limit exceeded for {student_id} from {client_ip}")
+            return False, f"Rate limit exceeded. Max {max_requests} requests per hour."
+        
+        return True, None
     
     def _get_student_uuid(self, student_number: str) -> Optional[str]:
         """
