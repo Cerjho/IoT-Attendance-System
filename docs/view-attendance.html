@@ -188,12 +188,13 @@
                     const student = students[0];
 
                     // Update student info
-                    const initials = student.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                    const fullName = `${student.first_name || ''} ${student.middle_name || ''} ${student.last_name || ''}`.trim();
+                    const initials = `${(student.first_name || '')[0] || ''}${(student.last_name || '')[0] || ''}`.toUpperCase();
                     document.getElementById('studentAvatar').textContent = initials;
-                    document.getElementById('studentName').textContent = student.name;
+                    document.getElementById('studentName').textContent = fullName || 'Unknown';
                     document.getElementById('studentNumber').textContent = student.student_number || 'N/A';
-                    document.getElementById('contactPhone').textContent = student.contact_number || 'N/A';
-                    document.getElementById('contactEmail').textContent = student.email || 'N/A';
+                    document.getElementById('contactPhone').textContent = student.parent_guardian_contact || 'N/A';
+                    document.getElementById('contactEmail').textContent = student.parent_guardian_email || student.email || 'N/A';
 
                     // Fetch attendance records
                     const attendanceResponse = await fetch(`${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentId}&select=*&order=date.desc,time_in.desc`, {
