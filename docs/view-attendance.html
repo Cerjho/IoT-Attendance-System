@@ -408,24 +408,20 @@
         const SUPABASE_URL = 'https://ddblgwzylvwuucnpmtzi.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkYmxnd3p5bHZ3dXVjbnBtdHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDM4MjIsImV4cCI6MjA3OTM3OTgyMn0.EL7xhE0SbgvJ_R8ZAlkawOqRMi3yYMGFbGkqBMWMaJI';
         
-        // Verification API endpoint (dashboard on Pi device)
-        // Use Tailscale HTTPS URL to avoid mixed content blocking on GitHub Pages
-        const VERIFY_API = 'https://pi-iot.tail5a6c2.ts.net:8080/api/verify-url';
+        // Verification API endpoint - Supabase Edge Function (HTTPS, no CORS issues!)
+        // TODO: Replace with your actual Supabase project URL
+        const VERIFY_API = 'https://ddblgwzylvwuucnpmtzi.supabase.co/functions/v1/verify-attendance-url';
         
         async function verifySignedURL() {
-            // TEMPORARY: Skip signature verification until public API is available
-            // Parents cannot access Tailscale URL from outside network
-            console.warn('Signature verification disabled - running in unsigned mode');
-            return { valid: true, student_id: studentId };
-            
-            /* DISABLED - Requires publicly accessible API
+            // Verify signature via Supabase Edge Function
+            // This prevents parents from tampering with student UUIDs in the URL
             // If no signature, assume old-style unsigned URL (backward compatibility)
             if (!sig || !expires) {
                 console.log('No signature - using legacy unsigned URL');
                 return { valid: true, student_id: studentId };
             }
             
-            // Verify signature via API
+            // Verify signature via Supabase Edge Function
             try {
                 const verifyUrl = `${VERIFY_API}?student_id=${studentId}&expires=${expires}&sig=${encodeURIComponent(sig)}`;
                 const response = await fetch(verifyUrl);
@@ -444,7 +440,6 @@
                 console.warn('Verification API unavailable - falling back to unsigned mode');
                 return { valid: true, student_id: studentId };
             }
-            */
         }
         
         async function loadAttendance() {
