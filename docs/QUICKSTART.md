@@ -254,7 +254,7 @@ To access dashboard remotely, configure your router:
 - Internal IP: `<raspberry-pi-ip>`
 - Internal Port: 80
 
-**Security Warning:** Use VPN or reverse proxy (cloudflare tunnel) for secure remote access!
+**Security Warning:** Use VPN (like Tailscale) or reverse proxy for secure remote access!
 
 ---
 
