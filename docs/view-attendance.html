@@ -6,10 +6,10 @@
         <title>Parent — Student Report Card</title>
         <style>
             :root{--bg:#071027;--panel:#0c1726;--muted:#9aa9bf;--accent:#6c5ce7;--success:#22c55e}
-            *{box-sizing:border-box}
-            body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#071027 0%,#071832 100%);color:#eaf1fb;overflow-x:hidden}
-            .wrap{width:100vw;max-width:100%;margin:0;padding:28px 20px;display:grid;grid-template-columns:340px minmax(0,1fr) 360px;gap:32px;box-sizing:border-box}
-            .card-left{background:linear-gradient(180deg,#081226,#0a1630);border-radius:14px;padding:28px;box-shadow:0 18px 48px rgba(2,7,23,.6)}
+            *{box-sizing:border-box;margin:0;padding:0}
+            body{margin:0;padding:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#071027 0%,#071832 100%);color:#eaf1fb;overflow-x:hidden;width:100vw;height:100vh}
+            .wrap{width:100%;max-width:100%;margin:0;padding:28px 0;display:grid;grid-template-columns:minmax(300px,1fr) minmax(0,2fr) minmax(300px,1fr);gap:20px;box-sizing:border-box}
+            .card-left{background:linear-gradient(180deg,#081226,#0a1630);border-radius:14px;padding:28px;box-shadow:0 18px 48px rgba(2,7,23,.6);margin-left:20px}
             .avatar{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;background:linear-gradient(135deg,#6c5ce7,#4ade80);font-weight:700;font-size:32px}
             .student-name{text-align:center;font-size:20px;font-weight:700}
             .student-meta{text-align:center;color:var(--muted);font-size:14px;margin-top:8px}
@@ -35,10 +35,10 @@
             tbody tr:hover{background:rgba(255,255,255,0.02)}
             .summary{display:flex;gap:14px;margin-top:20px;flex-wrap:wrap}
             .summary .box{flex:1;min-width:150px;background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;text-align:center}
-            .card-right{background:linear-gradient(180deg,#081226,#0a1630);border-radius:14px;padding:18px;box-shadow:0 18px 48px rgba(2,7,23,.6);display:flex;flex-direction:column;align-items:center;gap:12px}
+            .card-right{background:linear-gradient(180deg,#081226,#0a1630);border-radius:14px;padding:18px;box-shadow:0 18px 48px rgba(2,7,23,.6);display:flex;flex-direction:column;align-items:center;gap:12px;margin-right:20px}
             .card-right img{width:100%;height:auto;min-height:220px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);object-fit:cover;background:#081a2b}
             .card-right .caption{font-size:14px;color:var(--muted);text-align:center;margin-top:10px}
-            @media(max-width:980px){.wrap{grid-template-columns:1fr;padding:16px}.card-left{order:2}.main{order:1}.card-right{order:3;display:none}}
+            @media(max-width:980px){.wrap{grid-template-columns:1fr;padding:16px 20px;gap:16px}.card-left{order:2;margin:0 20px}.main{order:1;margin:0 20px}.card-right{order:3;display:none;margin:0 20px}}
         </style>
     </head>
     <body>
