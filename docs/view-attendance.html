@@ -1,750 +1,352 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Attendance - Mabini High School</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-        
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        
-        .content {
-            padding: 30px;
-        }
-        
-        .student-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .student-info h2 {
-            font-size: 20px;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .student-info p {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.9;
-            text-transform: uppercase;
-        }
-        
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .filter-btn {
-            padding: 10px 20px;
-            border: 2px solid #667eea;
-            background: white;
-            color: #667eea;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-        }
-        
-        .filter-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 20px;
-            border-radius: 12px;
-            border-left: 4px solid #c33;
-        }
-        
-        .attendance-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        .attendance-table th {
-            background: #667eea;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        
-        .attendance-table td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-        
-        .attendance-table tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .photo-thumbnail {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .photo-thumbnail:hover {
-            transform: scale(1.1);
-        }
-        
-        .photo-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.9);
-        }
-        
-        .photo-modal-content {
-            margin: auto;
-            display: block;
-            max-width: 90%;
-            max-height: 90%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        .photo-modal-close {
-            position: absolute;
-            top: 20px;
-            right: 35px;
-            color: #f1f1f1;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        
-        .photo-modal-close:hover {
-            color: #bbb;
-        }
-        
-        .status-present {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status-late {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-absent {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .no-records {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-        
-        .footer {
-            background: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-        }
-        
-        @media (max-width: 600px) {
-            .container {
-                border-radius: 0;
-                margin: 0;
-            }
-            
-            .header {
-                padding: 20px 15px;
-            }
-            
-            .header h1 {
-                font-size: 20px;
-            }
-            
-            .content {
-                padding: 15px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .stat-card {
-                padding: 15px;
-            }
-            
-            .stat-number {
-                font-size: 24px;
-            }
-            
-            .filters {
-                gap: 8px;
-            }
-            
-            .filter-btn {
-                padding: 8px 15px;
-                font-size: 13px;
-            }
-            
-            .attendance-table {
-                font-size: 11px;
-            }
-            
-            .attendance-table th,
-            .attendance-table td {
-                padding: 8px 4px;
-            }
-            
-            .photo-thumbnail {
-                width: 45px;
-                height: 45px;
-            }
-            
-            .status-badge {
-                padding: 4px 8px;
-                font-size: 10px;
-            }
-        }
-        
-        /* Loading animation */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .stat-card, .filter-btn, .attendance-table tr {
-            animation: fadeIn 0.3s ease-out;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📚 Student Attendance</h1>
-            <p>Mabini High School - Automated Attendance System</p>
-        </div>
-        
-        <div class="content">
-            <div id="studentInfo" class="student-info" style="display: none;">
-                <h2 id="studentName">Loading...</h2>
-                <p id="studentDetails">Student ID: <span id="studentId"></span></p>
-            </div>
-            
-            <!-- Statistics Dashboard -->
-            <div id="statsContainer" style="display: none;">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" id="totalDays">0</div>
-                        <div class="stat-label">Total Days</div>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Parent — Student Report Card</title>
+        <style>
+            :root{--bg:#071027;--panel:#0c1726;--muted:#9aa9bf;--accent:#6c5ce7;--success:#22c55e}
+            *{box-sizing:border-box}
+            body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#071027 0%,#071832 100%);color:#eaf1fb}
+            .wrap{width:100%;max-width:none;margin:0;padding:28px 20px;display:grid;grid-template-columns:340px minmax(0,1fr) 360px;gap:32px}
+            .card-left{background:linear-gradient(180deg,#081226,#0a1630);border-radius:14px;padding:28px;box-shadow:0 18px 48px rgba(2,7,23,.6)}
+            .avatar{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;background:linear-gradient(135deg,#6c5ce7,#4ade80);font-weight:700;font-size:32px}
+            .student-name{text-align:center;font-size:20px;font-weight:700}
+            .student-meta{text-align:center;color:var(--muted);font-size:14px;margin-top:8px}
+            .badge{display:inline-block;padding:6px 10px;border-radius:10px;background:#07361a;color:#aef5bf;font-weight:600;margin:12px auto}
+            .section{margin-top:18px;background:rgba(255,255,255,0.02);padding:14px;border-radius:12px}
+            .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+            .row:last-child{border-bottom:0}
+            .main{display:flex;flex-direction:column;gap:14px}
+            .top-stat{display:flex;gap:16px;flex-wrap:wrap}
+            .stat{flex:1;min-width:150px;background:linear-gradient(180deg,#08142a,#061026);padding:16px;border-radius:12px;text-align:center}
+            .stat .value{font-size:22px;font-weight:800}
+            .panel{background:linear-gradient(180deg,#071229,#051023);padding:20px;border-radius:14px}
+            .report-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+            .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+            select,input{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#eaf1fb;padding:10px 12px;border-radius:10px}
+            button{background:linear-gradient(90deg,var(--accent),#4f46e5);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:14px}
+            button:hover{opacity:0.9}
+            .subjects{margin-top:22px;border-radius:10px;overflow-x:auto}
+            table{width:100%;border-collapse:collapse;min-width:600px}
+            th,td{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left;vertical-align:middle}
+            th{font-size:13px;color:var(--muted);letter-spacing:0.6px;text-transform:uppercase}
+            tbody tr{line-height:1.8}
+            tbody tr:hover{background:rgba(255,255,255,0.02)}
+            .summary{display:flex;gap:14px;margin-top:20px;flex-wrap:wrap}
+            .summary .box{flex:1;min-width:150px;background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;text-align:center}
+            .card-right{background:linear-gradient(180deg,#081226,#0a1630);border-radius:14px;padding:18px;box-shadow:0 18px 48px rgba(2,7,23,.6);display:none;flex-direction:column;align-items:center;gap:12px}
+            .card-right img{max-width:100%;max-height:320px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);object-fit:cover}
+            .card-right .caption{font-size:14px;color:var(--muted);text-align:center;margin-top:10px}
+            @media(max-width:980px){.wrap{grid-template-columns:1fr;padding:16px}.card-left{order:2}.main{order:1}.card-right{order:3;display:none}}
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <aside class="card-left">
+                <div class="avatar" id="studentAvatar">...</div>
+                <div class="student-name" id="studentName">Loading...</div>
+                <div class="student-meta">Student ID: <strong id="studentNumber">...</strong></div>
+                <div style="text-align:center;margin-top:10px"><span class="badge" id="enrollmentStatus">Enrolled</span></div>
+                <div class="section">
+                    <div class="row"><div>Last Enrollment</div><div style="color:var(--muted)" id="lastEnrollment">N/A</div></div>
+                    <div class="row"><div>Year/Grade</div><div style="color:var(--muted)" id="yearGrade">N/A</div></div>
+                    <div class="row"><div>Graduating</div><div style="color:var(--muted)" id="graduating">No</div></div>
+                </div>
+                <div class="section">
+                    <div style="font-weight:700;margin-bottom:6px">Contact</div>
+                    <div style="color:var(--muted)" id="contactPhone">N/A</div>
+                    <div style="color:var(--muted)" id="contactEmail">N/A</div>
+                </div>
+            </aside>
+
+            <main class="main">
+                <div class="top-stat">
+                    <div class="stat"><div style="font-size:12px;color:var(--muted)">Attendance Rate</div><div class="value" id="attendanceRate">0%</div></div>
+                    <div class="stat"><div style="font-size:12px;color:var(--muted)">GPA</div><div class="value" id="gpa">N/A</div></div>
+                    <div class="stat"><div style="font-size:12px;color:var(--muted)">Days Present</div><div class="value" id="daysPresent">0</div></div>
+                    <div class="stat"><div style="font-size:12px;color:var(--muted)">Days Absent</div><div class="value" id="daysAbsent">0</div></div>
+                </div>
+
+                <div class="panel">
+                    <div class="report-header">
+                        <h3 style="margin:0">Report Card</h3>
+                        <div class="controls">
+                            <button id="printBtn">Print / Save PDF</button>
+                            <button id="exportCsv">Export CSV</button>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="presentDays">0</div>
-                        <div class="stat-label">Present</div>
+
+                    <div class="subjects" id="attendanceContainer">
+                        <table>
+                            <thead>
+                                <tr><th>DATE</th><th>TIME IN</th><th>TIME OUT</th><th>STATUS</th><th style="text-align:right">VIEW</th></tr>
+                            </thead>
+                            <tbody id="attendanceBody">
+                                <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">Loading attendance records...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="lateDays">0</div>
-                        <div class="stat-label">Late</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="attendanceRate">0%</div>
-                        <div class="stat-label">Attendance Rate</div>
+
+                    <div class="summary">
+                        <div class="box"><div style="font-size:12px;color:var(--muted)">Remarks</div><div id="remarks" style="font-weight:700">No remarks</div></div>
+                        <div class="box"><div style="font-size:12px;color:var(--muted)">Advisory</div><div id="advisory" style="font-weight:700">N/A</div></div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Filter Buttons -->
-            <div id="filtersContainer" style="display: none;" class="filters">
-                <button class="filter-btn active" onclick="filterRecords('all')">All Time</button>
-                <button class="filter-btn" onclick="filterRecords('week')">This Week</button>
-                <button class="filter-btn" onclick="filterRecords('month')">This Month</button>
-            </div>
-            
-            <div id="loading" class="loading">
-                <div class="spinner"></div>
-                <p id="loadingText">Loading attendance records...</p>
-                <p style="font-size: 12px; color: #999; margin-top: 10px;">This may take a few seconds</p>
-            </div>
-            
-            <div id="error" style="display: none;"></div>
-            
-            <div id="attendanceContainer"></div>
+
+                <div class="panel">
+                    <h3 style="margin-top:0">Attendance Summary</h3>
+                    <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+                        <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--muted);font-size:12px">Total Days</div><div id="totalDays" style="font-weight:700">0</div></div>
+                        <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--muted);font-size:12px">Present</div><div id="presentDays" style="font-weight:700">0</div></div>
+                        <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--muted);font-size:12px">Absent</div><div id="absentDays" style="font-weight:700">0</div></div>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="card-right" id="photoViewer">
+                <div style="width:100%;display:flex;justify-content:space-between;align-items:center">
+                    <div style="font-weight:700">Camera Snapshot</div>
+                    <button id="closePhoto" style="background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:20px;padding:4px 8px">✕</button>
+                </div>
+                <img id="cameraPhoto" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='220'><rect width='100%' height='100%' fill='%23081a2b'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23aab9cc' font-family='Arial' font-size='16'>No photo selected</text></svg>" alt="Camera scan">
+                <div class="caption" id="photoCaption">Click 'View' on a row to show the scan</div>
+            </aside>
         </div>
-        
-        <!-- Photo Modal -->
-        <div id="photoModal" class="photo-modal" onclick="closePhotoModal()">
-            <span class="photo-modal-close" onclick="closePhotoModal()">&times;</span>
-            <img class="photo-modal-content" id="modalPhoto">
-        </div>
-        
-        <div class="footer">
-            <p>🔒 This is a secure view of your child's attendance records.</p>
-            <p>For questions, please contact the school office.</p>
-        </div>
-    </div>
-    
-    <script>
-        // Get URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const studentId = urlParams.get('student_id');
-        const expires = urlParams.get('expires');
-        const sig = urlParams.get('sig');
-        
-        // Supabase configuration (using public anon key - safe for client-side)
-        const SUPABASE_URL = 'https://ddblgwzylvwuucnpmtzi.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkYmxnd3p5bHZ3dXVjbnBtdHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDM4MjIsImV4cCI6MjA3OTM3OTgyMn0.EL7xhE0SbgvJ_R8ZAlkawOqRMi3yYMGFbGkqBMWMaJI';
-        
-        // Verification API endpoint - Supabase Edge Function (HTTPS, no CORS issues!)
-        // TODO: Replace with your actual Supabase project URL
-        const VERIFY_API = 'https://ddblgwzylvwuucnpmtzi.supabase.co/functions/v1/verify-attendance-url';
-        
-        async function verifySignedURL() {
-            // Verify signature via Supabase Edge Function
-            // This prevents parents from tampering with student UUIDs in the URL
-            // If no signature, assume old-style unsigned URL (backward compatibility)
-            if (!sig || !expires) {
-                console.log('No signature - using legacy unsigned URL');
-                return { valid: true, student_id: studentId };
-            }
-            
-            // Verify signature via Supabase Edge Function
-            try {
-                const verifyUrl = `${VERIFY_API}?student_id=${studentId}&expires=${expires}&sig=${encodeURIComponent(sig)}`;
-                const response = await fetch(verifyUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    return { valid: false, error: error.error || 'Invalid or expired link' };
+
+        <script>
+            // Configuration
+            const SUPABASE_URL = 'https://ddblgwzylvwuucnpmtzi.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkYmxnd3p5bHZ3dXVjbnBtdHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDM4MjIsImV4cCI6MjA3OTM3OTgyMn0.EL7xhE0SbgvJ_R8ZAlkawOqRMi3yYMGFbGkqBMWMaJI';
+            const VERIFY_API = 'https://ddblgwzylvwuucnpmtzi.supabase.co/functions/v1/verify-attendance-url';
+
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const studentId = urlParams.get('student_id');
+            const expires = urlParams.get('expires');
+            const sig = urlParams.get('sig');
+
+            async function verifySignedURL() {
+                // If no signature, assume old-style unsigned URL (backward compatibility)
+                if (!sig || !expires) {
+                    console.log('No signature - using legacy unsigned URL');
+                    return { valid: true, student_id: studentId };
                 }
-                
-                const result = await response.json();
-                return result;
-                
-            } catch (error) {
-                console.error('Verification API error:', error);
-                // If API unavailable, fall back to unsigned mode (graceful degradation)
-                console.warn('Verification API unavailable - falling back to unsigned mode');
-                return { valid: true, student_id: studentId };
-            }
-        }
-        
-        async function loadAttendance() {
-            if (!studentId) {
-                showError('No student ID provided. Please use the link from your SMS.');
-                return;
-            }
-            
-            // Verify signed URL first
-            const verification = await verifySignedURL();
-            
-            if (!verification.valid) {
-                showError(`🔒 ${verification.error || 'Invalid or expired link'}<br><br>Please request a new link by scanning your QR code again.`, false);
-                return;
-            }
-            
-            try {
-                // studentId is now a UUID from the URL parameter
-                // Fetch student info using UUID directly
-                const studentResponse = await fetch(
-                    `${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=id,student_number,first_name,last_name,grade_level,section`,
-                    {
+
+                // Verify signature via Supabase Edge Function
+                try {
+                    const verifyUrl = `${VERIFY_API}?student_id=${studentId}&expires=${expires}&sig=${encodeURIComponent(sig)}`;
+                    const response = await fetch(verifyUrl, {
                         headers: {
-                            'apikey': SUPABASE_ANON_KEY,
                             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                         }
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        return { valid: false, error: error.error || 'Invalid or expired link' };
                     }
-                );
-                
-                if (!studentResponse.ok) {
-                    throw new Error(`Student not found: ${studentResponse.status}`);
+
+                    const result = await response.json();
+                    return result;
+
+                } catch (error) {
+                    console.error('Verification API error:', error);
+                    // If API unavailable, fall back to unsigned mode (graceful degradation)
+                    console.warn('Verification API unavailable - falling back to unsigned mode');
+                    return { valid: true, student_id: studentId };
                 }
-                
-                const students = await studentResponse.json();
-                if (students.length === 0) {
-                    showError('Student not found. Please check the link.');
+            }
+
+            async function loadAttendance() {
+                if (!studentId) {
+                    showError('No student ID provided. Please use the link from your SMS.');
                     return;
                 }
-                
-                const student = students[0];
-                const studentUUID = student.id;  // This is the UUID from URL
-                const studentNumber = student.student_number;  // This is the QR code number
-                
-                // Update student info display with student_number (not UUID)
-                document.getElementById('studentId').textContent = studentNumber;
-                document.getElementById('studentName').textContent = 
-                    `${student.first_name} ${student.last_name}`;
-                const gradeNum = student.grade_level ? student.grade_level.replace(/Grade\s*/i, '') : '';
-                const sectionLetter = student.section ? student.section.replace(/Section\s*/i, '') : '';
-                document.getElementById('studentDetails').innerHTML = 
-                    `Student ID: ${studentNumber} | Grade: ${gradeNum} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Section: ${sectionLetter}`;
-                document.getElementById('studentInfo').style.display = 'block';
-                
-                // Fetch attendance records using UUID
-                const response = await fetch(
-                    `${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentUUID}&select=*&order=created_at.desc&limit=30`,
-                    {
+
+                // Verify signed URL first
+                const verification = await verifySignedURL();
+
+                if (!verification.valid) {
+                    showError(verification.error || 'Invalid or expired link. Please request a new one.');
+                    return;
+                }
+
+                try {
+                    // Fetch student info
+                    const studentResponse = await fetch(`${SUPABASE_URL}/rest/v1/students?id=eq.${studentId}&select=*`, {
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
                             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                         }
+                    });
+
+                    if (!studentResponse.ok) throw new Error('Failed to fetch student data');
+                    const students = await studentResponse.json();
+                    if (students.length === 0) throw new Error('Student not found');
+
+                    const student = students[0];
+
+                    // Update student info
+                    const initials = student.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                    document.getElementById('studentAvatar').textContent = initials;
+                    document.getElementById('studentName').textContent = student.name;
+                    document.getElementById('studentNumber').textContent = student.student_number || 'N/A';
+                    document.getElementById('contactPhone').textContent = student.contact_number || 'N/A';
+                    document.getElementById('contactEmail').textContent = student.email || 'N/A';
+
+                    // Fetch attendance records
+                    const attendanceResponse = await fetch(`${SUPABASE_URL}/rest/v1/attendance?student_id=eq.${studentId}&select=*&order=date.desc,time_in.desc`, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+
+                    if (!attendanceResponse.ok) throw new Error('Failed to fetch attendance data');
+                    const attendance = await attendanceResponse.json();
+
+                    renderAttendance(attendance);
+
+                } catch (error) {
+                    console.error('Error loading attendance:', error);
+                    showError('Failed to load attendance data. Please try again later.');
+                }
+            }
+
+            function renderAttendance(records) {
+                const tbody = document.getElementById('attendanceBody');
+                tbody.innerHTML = '';
+
+                if (records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">No attendance records found</td></tr>';
+                    return;
+                }
+
+                // Calculate stats
+                let present = 0, absent = 0, late = 0;
+                records.forEach(rec => {
+                    if (rec.status === 'present') present++;
+                    else if (rec.status === 'absent') absent++;
+                    else if (rec.status === 'late') late++;
+                });
+
+                const total = records.length;
+                const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+                document.getElementById('attendanceRate').textContent = rate + '%';
+                document.getElementById('daysPresent').textContent = present;
+                document.getElementById('daysAbsent').textContent = absent;
+                document.getElementById('totalDays').textContent = total;
+                document.getElementById('presentDays').textContent = present;
+                document.getElementById('absentDays').textContent = absent;
+
+                // Render records
+                records.forEach((rec, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'attendance-row';
+
+                    const timeIn = rec.time_in || 'N/A';
+                    const timeOut = rec.time_out || 'N/A';
+                    const status = rec.status || 'unknown';
+                    const photo = extractPhotoUrl(rec.remarks);
+
+                    const viewBtn = photo ? 
+                        `<button class="view-btn" data-idx="${idx}" data-photo="${photo}" style="padding:6px 12px;border-radius:6px;background:rgba(108,92,231,.2);color:#c5bcff;border:1px solid rgba(108,92,231,.3);cursor:pointer">View</button>` : 
+                        `<button disabled style="padding:6px 12px;border-radius:6px;background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,.06);cursor:not-allowed;opacity:.4">View</button>`;
+
+                    tr.innerHTML = `
+                        <td>${rec.date}</td>
+                        <td>${timeIn}</td>
+                        <td>${timeOut}</td>
+                        <td><span style="padding:4px 8px;border-radius:6px;font-size:11px;background:${getStatusColor(status)}">${status.toUpperCase()}</span></td>
+                        <td style="text-align:right">${viewBtn}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (photo) {
+                        tr.querySelector('.view-btn').addEventListener('click', () => {
+                            showPhoto(photo, rec);
+                        });
                     }
-                );
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to load attendance: ${response.status}`);
-                }
-                
-                const records = await response.json();
-                
-                document.getElementById('loading').style.display = 'none';
-                
-                // Store records globally for filtering
-                window.allRecords = records;
-                
-                // Calculate and display statistics
-                calculateStats(records);
-                
-                // Show filters
-                document.getElementById('filtersContainer').style.display = 'flex';
-                
-                displayAttendance(records);
-                
-            } catch (error) {
-                console.error('Error loading attendance:', error);
-                let errorMessage = 'Unable to load attendance records. ';
-                
-                if (!navigator.onLine) {
-                    errorMessage += 'Please check your internet connection.';
-                } else if (error.message.includes('Student not found')) {
-                    errorMessage = 'Student record not found. Please contact the school office.';
-                } else if (error.message.includes('Failed to load attendance')) {
-                    errorMessage += 'The server may be temporarily unavailable.';
-                } else {
-                    errorMessage += 'Please try again later.';
-                }
-                
-                showError(errorMessage, true);
-            }
-        }
-        
-        function calculateStats(records) {
-            if (!records || records.length === 0) {
-                document.getElementById('statsContainer').style.display = 'none';
-                return;
-            }
-            
-            const totalDays = records.length;
-            const presentDays = records.filter(r => (r.status || '').toLowerCase() === 'present').length;
-            const lateDays = records.filter(r => (r.status || '').toLowerCase() === 'late').length;
-            const attendanceRate = totalDays > 0 ? Math.round(((presentDays + lateDays) / totalDays) * 100) : 0;
-            
-            document.getElementById('totalDays').textContent = totalDays;
-            document.getElementById('presentDays').textContent = presentDays;
-            document.getElementById('lateDays').textContent = lateDays;
-            document.getElementById('attendanceRate').textContent = attendanceRate + '%';
-            document.getElementById('statsContainer').style.display = 'block';
-        }
-        
-        function filterRecords(period) {
-            // Update active button
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if (!window.allRecords || window.allRecords.length === 0) {
-                return;
-            }
-            
-            const now = new Date();
-            let filtered = window.allRecords;
-            
-            if (period === 'week') {
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                filtered = window.allRecords.filter(r => {
-                    const recordDate = new Date(r.created_at || r.timestamp || r.date);
-                    return recordDate >= weekAgo && !isNaN(recordDate);
-                });
-            } else if (period === 'month') {
-                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                filtered = window.allRecords.filter(r => {
-                    const recordDate = new Date(r.created_at || r.timestamp || r.date);
-                    return recordDate >= monthAgo && !isNaN(recordDate);
                 });
             }
-            
-            calculateStats(filtered);
-            displayAttendance(filtered);
-        }
-        
-        function displayAttendance(records) {
-            const container = document.getElementById('attendanceContainer');
-            
-            if (records.length === 0) {
-                container.innerHTML = '<div class="no-records">📅 No attendance records found yet.<br><br>Records will appear here once student checks in at school.</div>';
-                return;
+
+            function extractPhotoUrl(remarks) {
+                if (!remarks) return null;
+                const match = remarks.match(/https?:\/\/[^\s]+/);
+                return match ? match[0] : null;
             }
-            
-            let html = '<div style="overflow-x: auto;"><table class="attendance-table">';
-            html += '<thead><tr>';
-            html += '<th>Photo</th>';
-            html += '<th>Date</th>';
-            html += '<th>Time In</th>';
-            html += '<th>Time Out</th>';
-            html += '<th>Status</th>';
-            html += '</tr></thead>';
-            html += '<tbody>';
-            
-            records.forEach(record => {
-                // Handle timestamp field (from your attendance system)
-                const timestamp = record.timestamp || record.created_at || record.date || 'N/A';
-                const status = record.status || 'present';
-                const photoUrl = record.photo_url || record.photo_path;
-                
-                // Handle time fields
-                let timeIn = record.time_in;
-                if (!timeIn && timestamp !== 'N/A') {
-                    timeIn = formatTime(timestamp);
-                }
-                
-                let timeOut = record.time_out || '-';
-                const dateOnly = formatDateOnly(timestamp);
-                
-                html += '<tr>';
-                // Photo cell
-                if (photoUrl && photoUrl !== '') {
-                    // Escape single quotes in URL for onclick
-                    const escapedUrl = photoUrl.replace(/'/g, "\\'");
-                    html += `<td><img src="${photoUrl}" class="photo-thumbnail" onclick="openPhotoModal('${escapedUrl}')" alt="Attendance photo" loading="lazy"></td>`;
-                } else {
-                    html += '<td><div style="font-size:24px;">📷</div></td>';
-                }
-                html += `<td>${dateOnly}</td>`;
-                html += `<td><span class="status-badge status-present">${timeIn || '-'}</span></td>`;
-                html += `<td>${timeOut !== '-' ? `<span class="status-badge status-present">${timeOut}</span>` : '<span style="color:#999;">-</span>'}</td>`;
-                html += `<td><span class="status-badge status-${status.toLowerCase()}">${status.toUpperCase()}</span></td>`;
-                html += '</tr>';
-            });
-            
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
-        
-        function formatTime(dateTimeString) {
-            if (!dateTimeString || dateTimeString === 'N/A') return 'N/A';
-            const date = new Date(dateTimeString);
-            return date.toLocaleTimeString('en-US', { 
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-        
-        function formatDateOnly(dateTimeString) {
-            if (!dateTimeString || dateTimeString === 'N/A') return 'N/A';
-            const date = new Date(dateTimeString);
-            return date.toLocaleDateString('en-US', { 
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        }
-        
-        function formatDateTime(dateTimeString) {
-            if (!dateTimeString || dateTimeString === 'N/A') return 'N/A';
-            const date = new Date(dateTimeString);
-            return date.toLocaleString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-        
-        function formatDate(dateString) {
-            if (!dateString || dateString === 'N/A') return 'N/A';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
-        }
-        
-        function formatTime(timeString) {
-            if (!timeString) return '-';
-            const date = new Date(timeString);
-            return date.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-        
-        function showError(message, canRetry = false) {
-            document.getElementById('loading').style.display = 'none';
-            const errorDiv = document.getElementById('error');
-            errorDiv.className = 'error';
-            
-            let html = `<strong>⚠️ Error</strong><br>${message}`;
-            if (canRetry) {
-                html += `<br><br><button onclick="location.reload()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Try Again</button>`;
-            }
-            
-            errorDiv.innerHTML = html;
-            errorDiv.style.display = 'block';
-        }
-        
-        function openPhotoModal(photoUrl) {
-            if (!photoUrl) return;
-            
-            const modal = document.getElementById('photoModal');
-            const modalImg = document.getElementById('modalPhoto');
-            
-            if (modal && modalImg) {
-                modal.style.display = 'block';
-                modalImg.src = photoUrl;
-                modalImg.onerror = function() {
-                    modalImg.alt = 'Photo could not be loaded';
-                    console.error('Failed to load photo:', photoUrl);
+
+            function getStatusColor(status) {
+                const colors = {
+                    'present': 'rgba(34,197,94,.2);color:#86efac',
+                    'absent': 'rgba(239,68,68,.2);color:#fca5a5',
+                    'late': 'rgba(251,191,36,.2);color:#fde047',
+                    'excused': 'rgba(59,130,246,.2);color:#93c5fd'
                 };
+                return colors[status] || 'rgba(255,255,255,.05);color:var(--muted)';
             }
-        }
-        
-        function closePhotoModal() {
-            const modal = document.getElementById('photoModal');
-            if (modal) {
-                modal.style.display = 'none';
+
+            function showPhoto(url, record) {
+                const viewer = document.getElementById('photoViewer');
+                const img = document.getElementById('cameraPhoto');
+                const caption = document.getElementById('photoCaption');
+
+                viewer.style.display = 'flex';
+
+                if (!url) {
+                    img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='220'><rect width='100%' height='100%' fill='%23081a2b'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23aab9cc' font-family='Arial' font-size='16'>No photo available</text></svg>";
+                    caption.textContent = record ? `${record.date} — ${record.status}` : 'No photo available';
+                    return;
+                }
+
+                img.src = url;
+                caption.textContent = record ? `${record.date} • ${record.time_in || 'N/A'} - ${record.time_out || 'N/A'}` : '';
             }
-        }
-        
-        // Close modal with ESC key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closePhotoModal();
+
+            function showError(message) {
+                document.querySelector('.wrap').innerHTML = `
+                    <div style="grid-column:1/-1;text-align:center;padding:60px 20px">
+                        <div style="font-size:48px;margin-bottom:20px">⚠️</div>
+                        <h2 style="color:var(--muted);margin-bottom:10px">Error</h2>
+                        <p style="color:var(--muted)">${message}</p>
+                    </div>
+                `;
             }
-        });
-        
-        // Load attendance when page loads
-        loadAttendance();
-    </script>
-</body>
+
+            // Event listeners
+            document.getElementById('closePhoto').addEventListener('click', () => {
+                document.getElementById('photoViewer').style.display = 'none';
+            });
+
+            document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+            document.getElementById('exportCsv').addEventListener('click', () => {
+                const rows = [['Date', 'Time In', 'Time Out', 'Status']];
+                document.querySelectorAll('#attendanceBody tr').forEach(r => {
+                    const cols = r.querySelectorAll('td');
+                    if (cols.length >= 4) {
+                        rows.push([
+                            cols[0].textContent.trim(),
+                            cols[1].textContent.trim(),
+                            cols[2].textContent.trim(),
+                            cols[3].textContent.trim()
+                        ]);
+                    }
+                });
+                const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'attendance-history.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Load attendance on page load
+            loadAttendance();
+        </script>
+    </body>
 </html>
