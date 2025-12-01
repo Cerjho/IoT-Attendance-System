@@ -424,7 +424,11 @@
             // Verify signature via API
             try {
                 const verifyUrl = `${VERIFY_API}?student_id=${studentId}&expires=${expires}&sig=${encodeURIComponent(sig)}`;
-                const response = await fetch(verifyUrl);
+                const response = await fetch(verifyUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
                 
                 if (!response.ok) {
                     const error = await response.json();
