@@ -99,6 +99,8 @@ class CameraHandler:
             bool: True if camera started successfully, False otherwise
         """
         # Try Picamera2 first (for Bookworm)
+        print(f"DEBUG: Camera init: use_picamera2={self.use_picamera2}, PICAMERA2_AVAILABLE={PICAMERA2_AVAILABLE}")
+        logger.info(f"Camera init: use_picamera2={self.use_picamera2}, PICAMERA2_AVAILABLE={PICAMERA2_AVAILABLE}")
         if self.use_picamera2 and PICAMERA2_AVAILABLE:
             try:
                 logger.info("Attempting to start camera with Picamera2 (libcamera)...")
@@ -156,7 +158,8 @@ class CameraHandler:
         # Fallback to OpenCV (legacy)
         try:
             logger.info("Attempting to start camera with OpenCV (V4L2)...")
-            self.cap = cv2.VideoCapture(self.camera_index)
+            # Explicitly use V4L2 backend for better systemd compatibility
+            self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_V4L2)
 
             if not self.cap.isOpened():
                 logger.error(f"Failed to open camera at index {self.camera_index}")

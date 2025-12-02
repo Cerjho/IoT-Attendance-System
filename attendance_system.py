@@ -237,9 +237,9 @@ class IoTAttendanceSystem:
     def initialize_camera(self) -> bool:
         """Initialize camera"""
         try:
-            camera_index = self.config.get("camera.index", 0)
-            width = self.config.get("camera.resolution.width", 640)
-            height = self.config.get("camera.resolution.height", 480)
+            camera_index = int(self.config.get("camera.index", 0))
+            width = int(self.config.get("camera.resolution.width", 640))
+            height = int(self.config.get("camera.resolution.height", 480))
 
             # Prepare optional picamera controls from config
             picam_controls = self.config.get("camera.picamera", {})
