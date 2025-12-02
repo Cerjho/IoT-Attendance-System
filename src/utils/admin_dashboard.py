@@ -471,17 +471,25 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            cursor.execute(
-                """
-                SELECT 
-                    id, student_id, timestamp, scan_type, status,
-                    photo_path, synced, sync_timestamp, cloud_record_id
+            # Get available columns dynamically
+            cursor.execute("PRAGMA table_info(attendance)")
+            available_columns = [row[1] for row in cursor.fetchall()]
+            
+            # Build query with only available columns
+            base_columns = ['id', 'student_id', 'timestamp', 'scan_type', 'status', 'photo_path']
+            optional_columns = ['synced', 'sync_timestamp', 'cloud_record_id', 'qr_data']
+            
+            columns = [col for col in base_columns if col in available_columns]
+            columns += [col for col in optional_columns if col in available_columns]
+            
+            query = f"""
+                SELECT {', '.join(columns)}
                 FROM attendance
                 ORDER BY timestamp DESC
                 LIMIT ?
-            """,
-                (limit,),
-            )
+            """
+            
+            cursor.execute(query, (limit,))
 
             scans = [dict(row) for row in cursor.fetchall()]
             conn.close()
