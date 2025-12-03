@@ -377,8 +377,13 @@ class SMSNotifier:
                         timeout=10,
                     )
                     if response.status_code in [200, 202]:
-                        response_data = response.json()
-                        message_id = response_data.get("id", "unknown")
+                        try:
+                            response_data = response.json()
+                            message_id = response_data.get("id", "unknown")
+                        except json.JSONDecodeError:
+                            logger.warning(f"SMS API returned non-JSON response: {response.text[:100]}")
+                            message_id = "unknown"
+                            
                         logger.info(
                             f"SMS sent successfully to {phone_number} (Message ID: {message_id})"
                         )
@@ -388,10 +393,20 @@ class SMSNotifier:
                         logger.warning(
                             f"SMS send failed attempt {i+1}/{attempts}: {last_err}"
                         )
-                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-                    last_err = str(e)
+                except requests.exceptions.SSLError as e:
+                    last_err = f"SSL error: {str(e)}"
                     logger.warning(
-                        f"SMS send error attempt {i+1}/{attempts}: {last_err}"
+                        f"SMS SSL error attempt {i+1}/{attempts} to {phone_number}: {last_err}"
+                    )
+                except requests.exceptions.Timeout as e:
+                    last_err = f"Timeout: {str(e)}"
+                    logger.warning(
+                        f"SMS timeout attempt {i+1}/{attempts} to {phone_number}: {last_err}"
+                    )
+                except requests.exceptions.ConnectionError as e:
+                    last_err = f"Connection refused: {str(e)}"
+                    logger.warning(
+                        f"SMS connection error attempt {i+1}/{attempts} to {phone_number} (API may be down): {last_err}"
                     )
                 except Exception as e:
                     last_err = str(e)

@@ -663,16 +663,17 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                     logger.error(f"Failed to restart service: {e}")
             
                 try:
-                    # Git commit and push
+                    # Git commit and push (use project root dynamically)
+                    project_root = Path(__file__).parent.parent.parent
                     subprocess.run(['git', 'add', 'config/config.json'], 
-                                  cwd='/home/iot/attendance-system', check=True, timeout=5)
+                                  cwd=str(project_root), check=True, timeout=5)
                     
                     commit_msg = f"config: Update configuration via dashboard\n\nBackup: {backup_path.name}\nTimestamp: {datetime.now().isoformat()}"
                     subprocess.run(['git', 'commit', '-m', commit_msg],
-                                  cwd='/home/iot/attendance-system', check=True, timeout=10)
+                                  cwd=str(project_root), check=True, timeout=10)
                     
                     subprocess.run(['git', 'push', 'origin', 'main'],
-                                  cwd='/home/iot/attendance-system', check=True, timeout=30)
+                                  cwd=str(project_root), check=True, timeout=30)
                     
                     git_success = True
                     logger.info("Configuration committed and pushed to Git")

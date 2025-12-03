@@ -161,6 +161,18 @@ class CloudSyncManager:
             else:
                 raise Exception(f"API test failed: {response.status_code}")
 
+        except requests.exceptions.SSLError as e:
+            logger.error(f"SSL certificate error connecting to Supabase: {e}")
+            logger.warning("Consider checking SSL certificates or setting verify=False for self-signed certs")
+            self.enabled = False
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection refused by Supabase (service may be down): {e}")
+            logger.info("Will retry when network connectivity is restored")
+            self.enabled = False
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout connecting to Supabase: {e}")
+            logger.info("Network may be slow or Supabase endpoint unreachable")
+            self.enabled = False
         except Exception as e:
             logger.error(f"Failed to initialize Supabase REST API: {e}")
             self.enabled = False
@@ -205,10 +217,20 @@ class CloudSyncManager:
                     requests.get, student_url, headers=headers, timeout=self.timeouts.get_supabase_timeout()
                 )
             except CircuitBreakerOpen:
-                logger.error("Circuit breaker OPEN for students endpoint")
+                logger.error(f"Circuit breaker OPEN for students endpoint (student: {student_number})")
+                return None
+            except requests.exceptions.SSLError as e:
+                logger.error(f"SSL error during student lookup for {student_number}: {e}")
+                return None
+            except requests.exceptions.ConnectionError as e:
+                logger.error(f"Connection error during student lookup for {student_number}: {e}")
+                logger.debug("Supabase may be unreachable, record will be queued for retry")
+                return None
+            except requests.exceptions.Timeout as e:
+                logger.error(f"Timeout during student lookup for {student_number}: {e}")
                 return None
             except Exception as e:
-                logger.error(f"Student lookup failed: {e}")
+                logger.error(f"Student lookup failed for {student_number}: {e}")
                 return None
 
             if student_response.status_code != 200:
@@ -217,7 +239,12 @@ class CloudSyncManager:
                 )
                 return None
 
-            students = student_response.json()
+            try:
+                students = student_response.json()
+            except json.JSONDecodeError:
+                logger.error(f"Invalid JSON response from Supabase students endpoint: {student_response.text[:200]}")
+                return None
+                
             if not students or len(students) == 0:
                 logger.error(f"Student not found in Supabase: {student_number}")
                 return None
@@ -255,7 +282,12 @@ class CloudSyncManager:
                 return None
 
             if response.status_code in [200, 201]:
-                data = response.json()
+                try:
+                    data = response.json()
+                except json.JSONDecodeError:
+                    logger.error(f"Invalid JSON response from attendance endpoint: {response.text[:200]}")
+                    return None
+                    
                 cloud_id = data[0]["id"] if isinstance(data, list) else data.get("id")
                 logger.info(
                     f"Attendance synced to cloud: student {student_number} → UUID {student_uuid}"

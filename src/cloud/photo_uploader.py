@@ -70,8 +70,18 @@ class PhotoUploader:
             cloud_path = f"{student_id}/{timestamp}_{filename}"
 
             # Read file
-            with open(local_path, "rb") as f:
-                file_data = f.read()
+            try:
+                with open(local_path, "rb") as f:
+                    file_data = f.read()
+            except FileNotFoundError:
+                logger.error(f"Photo file not found: {local_path}")
+                return None
+            except PermissionError:
+                logger.error(f"Permission denied reading photo: {local_path}")
+                return None
+            except Exception as e:
+                logger.error(f"Error reading photo file: {e}")
+                return None
 
             # Upload using REST API
             upload_url = f"{self.storage_url}/object/{self.bucket_name}/{cloud_path}"
@@ -155,7 +165,12 @@ class PhotoUploader:
             )
 
             if response.status_code == 200:
-                files = response.json()
+                try:
+                    files = response.json()
+                except json.JSONDecodeError:
+                    logger.error(f"Invalid JSON response from photo list: {response.text[:200]}")
+                    return []
+                    
                 return [f["name"] for f in files if "name" in f]
             else:
                 logger.error(f"List failed: {response.status_code}")

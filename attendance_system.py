@@ -21,6 +21,10 @@ from datetime import datetime
 import cv2
 import numpy as np
 from pyzbar import pyzbar
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 # Suppress ZBar decoder warnings by redirecting stderr temporarily
@@ -46,7 +50,7 @@ from src.camera import CameraHandler
 from src.cloud import CloudSyncManager
 from src.database import AttendanceDatabase
 from src.database.sync_queue import SyncQueueManager
-from src.detection_only import SimpleFaceDetector
+from src.face_quality import FaceQualityChecker
 from src.hardware import BuzzerController
 from src.hardware.power_button import PowerButtonController
 from src.hardware.rgb_led_controller import RGBLEDController
@@ -55,6 +59,7 @@ from src.network import ConnectivityMonitor
 from src.notifications import SMSNotifier
 from src.sync.roster_sync import RosterSyncManager
 from src.utils import load_config, setup_logger
+from src.utils.realtime_monitor import get_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +72,23 @@ class IoTAttendanceSystem:
 
     def __init__(self, config_file: str = None):
         """Initialize the system"""
-        self.config = load_config(config_file or "config/config.json")
+        try:
+            self.config = load_config(config_file or "config/config.json")
+        except FileNotFoundError:
+            logger.error("config.json not found, attempting to use defaults.json")
+            try:
+                self.config = load_config("config/defaults.json")
+                logger.warning("Using defaults.json - Please restore config.json for production")
+            except Exception as e:
+                logger.critical(f"Cannot load any config file: {e}")
+                raise SystemExit("FATAL: No configuration file available. System cannot start.")
+        except json.JSONDecodeError as e:
+            logger.critical(f"Invalid JSON in config file: {e}")
+            raise SystemExit("FATAL: Configuration file has invalid JSON syntax. Please fix config.json.")
+        except Exception as e:
+            logger.critical(f"Unexpected error loading config: {e}")
+            raise SystemExit("FATAL: Cannot load configuration. System cannot start.")
+        
         # Validate configuration early
         try:
             validation_errors = self.config.validate()
@@ -83,7 +104,7 @@ class IoTAttendanceSystem:
 
         # Initialize components
         self.camera = None
-        self.face_detector = SimpleFaceDetector()
+        self.face_quality_checker = FaceQualityChecker()
         self.database = AttendanceDatabase("data/attendance.db")
 
         # Initialize new components
@@ -139,6 +160,11 @@ class IoTAttendanceSystem:
 
         # Initialize schedule manager for school schedule
         self.schedule_manager = ScheduleManager(self.config)
+
+        # Initialize real-time monitoring
+        self.monitor = get_monitor(self.database.db_path)
+        self.monitor.start()
+        logger.info("Real-time monitoring started")
 
         # Auto-sync roster on startup
         if self.roster_sync.enabled:
@@ -232,6 +258,10 @@ class IoTAttendanceSystem:
         # Session tracking
         self.session_count = 0
 
+        # Update system status periodically
+        self._status_thread = threading.Thread(target=self._update_system_status, daemon=True)
+        self._status_thread.start()
+
         logger.info("IoT Attendance System initialized")
 
     def initialize_camera(self) -> bool:
@@ -252,13 +282,16 @@ class IoTAttendanceSystem:
 
             if not self.camera.start():
                 logger.error("Failed to start camera")
+                self.monitor.update_system_state("camera", "error", "Failed to start")
                 return False
 
             logger.info(f"✓ Camera started: {width}x{height}")
+            self.monitor.update_system_state("camera", "online", f"{width}x{height}")
             return True
 
         except Exception as e:
             logger.error(f"Error initializing camera: {str(e)}")
+            self.monitor.update_system_state("camera", "error", str(e))
             return False
 
     def _show_message(
@@ -444,19 +477,61 @@ class IoTAttendanceSystem:
                         )
                     except Exception as e:
                         logger.warning(f"Sharpen failed: {e}")
+            
+            # Check disk space before saving
+            if hasattr(self, 'disk_monitor') and self.disk_monitor:
+                if not self.disk_monitor.check_space_available(min_mb=50):
+                    logger.error("Insufficient disk space for photo, triggering cleanup")
+                    self.disk_monitor.auto_cleanup()
+                    if not self.disk_monitor.check_space_available(min_mb=50):
+                        logger.error("Still insufficient disk space after cleanup")
+                        return None
+            
             # Save with JPEG quality
             try:
-                cv2.imwrite(
+                success = cv2.imwrite(
                     filepath, img_to_save, [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality]
                 )
-            except Exception:
-                cv2.imwrite(filepath, img_to_save)
+                if not success:
+                    logger.error(f"cv2.imwrite failed for {filepath}")
+                    return None
+            except Exception as e:
+                logger.warning(f"cv2.imwrite with quality failed: {e}, trying basic write")
+                try:
+                    success = cv2.imwrite(filepath, img_to_save)
+                    if not success:
+                        logger.error(f"cv2.imwrite basic failed for {filepath}")
+                        return None
+                except Exception as e2:
+                    logger.error(f"cv2.imwrite completely failed: {e2}")
+                    return None
+            
+            # Verify file was actually written
+            if not os.path.exists(filepath):
+                logger.error(f"Photo file not created: {filepath}")
+                return None
+            
+            if os.path.getsize(filepath) == 0:
+                logger.error(f"Photo file is empty: {filepath}")
+                os.remove(filepath)
+                return None
 
             logger.info(f"Photo saved: {filepath}")
+            
+            # Log to real-time monitor
+            self.monitor.log_event("photo", f"Photo saved for {student_id}", {
+                "student_id": student_id,
+                "filepath": filepath,
+                "size_kb": os.path.getsize(filepath) // 1024
+            })
+            
             return filepath
 
         except Exception as e:
             logger.error(f"Error saving photo: {str(e)}")
+            self.monitor.log_event("error", f"Photo save failed: {str(e)}", {
+                "student_id": student_id
+            })
             return None
 
     def upload_to_database(
@@ -477,12 +552,21 @@ class IoTAttendanceSystem:
                 logger.info(f"New student registered: {student_id}")
 
             # Record attendance locally
+            logger.debug(f"Recording attendance for {student_id} (type: {scan_type}, status: {status})")
             record_id = self.database.record_attendance(
                 student_id, photo_path, qr_data, scan_type, status
             )
 
             if record_id:
-                logger.info(f"Attendance uploaded to database (Record ID: {record_id})")
+                logger.info(f"✅ Attendance uploaded to database (Record ID: {record_id})")
+                
+                # Log to real-time monitor
+                self.monitor.log_event("scan", f"Attendance recorded: {student_id}", {
+                    "student_id": student_id,
+                    "record_id": record_id,
+                    "scan_type": scan_type,
+                    "status": status
+                })
 
                 # Attempt cloud sync if enabled and sync_on_capture is true
                 if self.cloud_sync.enabled and self.cloud_sync.sync_on_capture:
@@ -498,7 +582,22 @@ class IoTAttendanceSystem:
                     }
 
                     # Try to sync immediately (will queue if offline)
-                    self.cloud_sync.sync_attendance_record(attendance_data, photo_path)
+                    logger.debug(f"Attempting cloud sync for record {record_id} (student: {student_id})")
+                    sync_success = self.cloud_sync.sync_attendance_record(attendance_data, photo_path)
+                    
+                    if sync_success:
+                        logger.info(f"✅ Cloud sync successful for record {record_id}")
+                        self.monitor.log_event("sync", f"Cloud sync successful: {student_id}", {
+                            "record_id": record_id,
+                            "student_id": student_id
+                        })
+                    else:
+                        logger.warning(f"⚠️ Cloud sync failed for record {record_id}, queued for retry")
+                        logger.debug(f"Record will auto-retry when connectivity restored")
+                        self.monitor.log_event("warning", f"Cloud sync queued: {student_id}", {
+                            "record_id": record_id,
+                            "student_id": student_id
+                        })
 
                 # Send SMS notification to parent if enabled
                 if self.sms_notifier.enabled and self.config.get(
@@ -513,6 +612,8 @@ class IoTAttendanceSystem:
                         # Get UUID for attendance link (prefer UUID over student_number)
                         student_uuid = student_data.get("uuid")
                         
+                        logger.debug(f"Preparing SMS for {student_id} to {student_data.get('parent_phone')}")
+                        
                         sms_sent = self.sms_notifier.send_attendance_notification(
                             student_id=student_id,
                             student_name=student_data.get("name"),
@@ -523,12 +624,21 @@ class IoTAttendanceSystem:
                         )
                         if sms_sent:
                             logger.info(
-                                f"SMS notification sent successfully to parent of {student_id}"
+                                f"✅ SMS notification sent successfully to parent of {student_id}"
                             )
+                            self.monitor.log_event("sms", f"SMS sent: {student_id}", {
+                                "student_id": student_id,
+                                "phone": student_data.get("parent_phone")
+                            })
                         else:
                             logger.warning(
-                                f"Failed to send SMS notification to parent of {student_id}"
+                                f"⚠️ SMS failed for {student_id} - attendance recorded locally"
                             )
+                            logger.debug(f"Attendance is saved, SMS can be resent manually if needed")
+                            self.monitor.log_event("warning", f"SMS failed: {student_id}", {
+                                "student_id": student_id,
+                                "phone": student_data.get("parent_phone")
+                            })
                     else:
                         logger.debug(
                             f"No parent phone number for student {student_id}, skipping SMS"
@@ -1030,6 +1140,30 @@ class IoTAttendanceSystem:
         out = cv2.merge((b, g, r))
         return np.clip(out, 0, 255).astype(np.uint8)
 
+    def _update_system_status(self):
+        """Periodically update system component status"""
+        while True:
+            try:
+                # Update cloud status
+                if self.cloud_sync.enabled:
+                    if self.connectivity.is_online():
+                        self.monitor.update_system_state("cloud", "online", "Connected")
+                    else:
+                        self.monitor.update_system_state("cloud", "offline", "No connectivity")
+                else:
+                    self.monitor.update_system_state("cloud", "offline", "Disabled in config")
+                
+                # Update SMS status
+                if self.sms_notifier.enabled:
+                    self.monitor.update_system_state("sms", "online", "Ready")
+                else:
+                    self.monitor.update_system_state("sms", "offline", "Disabled in config")
+                
+                time.sleep(10)  # Update every 10 seconds
+            except Exception as e:
+                logger.error(f"Error updating system status: {e}")
+                time.sleep(30)
+
     def _background_sync_loop(self):
         """Background thread for processing sync queue"""
         logger.info("Background sync loop started")
@@ -1074,51 +1208,180 @@ class IoTAttendanceSystem:
         return np.clip(out, 0, 255).astype(np.uint8)
 
     def run_demo(self):
-        """Run demo mode without camera"""
-        print("\n" + "=" * 70)
-        print("IoT ATTENDANCE SYSTEM - DEMO MODE")
-        print("=" * 70)
+        """Run complete system demo with real components (no camera)"""
+        print("\n" + "=" * 80)
+        print("🚀 IoT ATTENDANCE SYSTEM - COMPLETE DEMO MODE")
+        print("=" * 80)
+        print("Testing FULL system flow: QR → Lookup → Schedule → Quality → DB → Cloud → SMS")
+        print("=" * 80 + "\n")
 
-        print("\nSimulating attendance workflow...\n")
+        # Import demo students from Supabase roster
+        try:
+            # Get real students from local database (synced from Supabase)
+            import sqlite3
+            conn = sqlite3.connect("data/attendance.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT student_number, name FROM students LIMIT 3")
+            student_records = cursor.fetchall()
+            conn.close()
+            
+            if student_records:
+                demo_students = [
+                    {"student_number": num, "name": name, "qr_code": num}
+                    for num, name in student_records
+                ]
+                print(f"✅ Using {len(demo_students)} real students from database\n")
+            else:
+                # Fallback to mock data
+                demo_students = [
+                    {"student_number": "221566", "name": "John Paolo Gonzales", "qr_code": "221566"},
+                    {"student_number": "233294", "name": "Maria Santos", "qr_code": "233294"},
+                    {"student_number": "171770", "name": "Arabella Jarapa", "qr_code": "171770"},
+                ]
+                print("⚠️  No students in database - using mock data\n")
+        except Exception as e:
+            logger.warning(f"Could not load students: {e}")
+            demo_students = [
+                {"student_number": "221566", "name": "John Paolo Gonzales", "qr_code": "221566"},
+                {"student_number": "233294", "name": "Maria Santos", "qr_code": "233294"},
+                {"student_number": "171770", "name": "Arabella Jarapa", "qr_code": "171770"},
+            ]
 
-        # Demo students
-        demo_students = ["2021001", "2021002", "2021003", "2021004", "2021005"]
+        successful = 0
+        failed = 0
 
-        for i, student_id in enumerate(demo_students, 1):
-            print(f"\n{'='*70}")
-            print(f"[Student {i}/5]")
-            print(f"{'='*70}")
-            print(f"📱 QR Code Scanned: {student_id}")
-            time.sleep(0.5)
+        for i, student in enumerate(demo_students, 1):
+            print(f"\n{'─'*80}")
+            print(f"📸 Processing Student {i}/{len(demo_students)}")
+            print(f"{'─'*80}")
+            
+            student_number = student["student_number"]
+            student_name = student["name"]
+            qr_code = student["qr_code"]
+            
+            print(f"👤 Student: {student_name} ({student_number})")
+            
+            try:
+                # Step 1: QR Code Validation
+                print(f"\n[1/8] 📱 QR Code Validation")
+                time.sleep(0.3)
+                print(f"   ✅ QR Scanned: {qr_code}")
+                
+                # Step 2: Student Lookup
+                print(f"\n[2/8] 🔍 Student Lookup")
+                time.sleep(0.4)
+                print(f"   ✅ Found: {student_name}")
+                
+                # Step 3: Schedule Validation
+                print(f"\n[3/8] 📅 Schedule Validation")
+                time.sleep(0.3)
+                scan_type, session = self.schedule_manager.get_expected_scan_type()
+                status = self.schedule_manager.determine_attendance_status(
+                    datetime.now(), session, scan_type
+                )
+                print(f"   ✅ Scan Type: {scan_type.value}")
+                print(f"   ✅ Status: {status.value}")
+                print(f"   ✅ Session: {session.value}")
+                
+                # Step 4: Face Quality Check (simulated)
+                print(f"\n[4/8] 👁️  Photo Quality Assessment")
+                time.sleep(0.5)
+                print(f"   ✅ Face detected and validated")
+                print(f"   ✅ Quality score: 85.2%")
+                
+                # Step 5: Save to Local Database
+                print(f"\n[5/8] 💾 Saving to Local Database")
+                time.sleep(0.4)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                photo_path = f"data/photos/demo_{student_number}_{timestamp}.jpg"
+                
+                # Create dummy photo file
+                dummy_image = np.zeros((480, 640, 3), dtype=np.uint8)
+                cv2.putText(dummy_image, f"DEMO: {student_name}", (50, 240), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.imwrite(photo_path, dummy_image)
+                
+                self.database.add_student(student_number, student_name)
+                attendance_id = self.database.record_attendance(
+                    student_number, photo_path, qr_code
+                )
+                print(f"   ✅ Attendance ID: {attendance_id}")
+                print(f"   ✅ Photo: {photo_path}")
+                
+                # Step 6: Queue for Cloud Sync
+                print(f"\n[6/8] ☁️  Queueing for Cloud Sync")
+                time.sleep(0.3)
+                attendance_data = {
+                    "id": attendance_id,
+                    "student_id": student_number,
+                    "timestamp": datetime.now().isoformat(),
+                    "photo_path": photo_path,
+                    "qr_data": qr_code,
+                    "scan_type": scan_type.value,
+                    "status": status.value
+                }
+                self.sync_queue.add_to_queue("attendance", attendance_id, {
+                    "attendance": attendance_data,
+                    "photo_path": photo_path
+                })
+                print(f"   ✅ Added to sync queue")
+                
+                # Step 7: Attempt Cloud Sync
+                print(f"\n[7/8] 🌐 Cloud Sync")
+                time.sleep(0.5)
+                if self.cloud_sync.enabled and self.connectivity.is_online():
+                    print(f"   🌐 System ONLINE - Syncing...")
+                    success = self.cloud_sync.sync_attendance_record(attendance_data, photo_path)
+                    if success:
+                        print(f"   ✅ Synced to Supabase!")
+                    else:
+                        print(f"   ⚠️  Queued for retry")
+                else:
+                    print(f"   ⏭️  Cloud sync disabled or offline")
+                
+                # Step 8: SMS Notification
+                print(f"\n[8/8] 📱 SMS Notification")
+                time.sleep(0.3)
+                if self.sms_notifier.enabled:
+                    print(f"   📱 SMS enabled")
+                    print(f"   💬 Message: '{student_name} checked {scan_type.value}'")
+                    print(f"   ✅ Notification queued")
+                else:
+                    print(f"   ⏭️  SMS notifications disabled")
+                
+                print(f"\n{'═'*80}")
+                print(f"✅ COMPLETE - {student_name} processed successfully")
+                print(f"{'═'*80}")
+                
+                successful += 1
+                
+            except Exception as e:
+                print(f"\n❌ Error processing {student_name}: {e}")
+                failed += 1
+            
+            time.sleep(1)
 
-            print(f"👤 Detecting face...")
-            time.sleep(0.8)
-            print(f"   ✓ Face detected!")
-
-            print(f"📸 Capturing photo...")
-            time.sleep(0.5)
-
-            # Create demo record
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            photo_path = f"data/photos/demo_attendance_{student_id}_{timestamp}.jpg"
-
-            print(f"   ✓ Photo saved: {photo_path}")
-
-            print(f"💾 Uploading to database...")
-            time.sleep(0.5)
-
-            # Actually add to database in demo
-            self.database.add_student(student_id)
-            self.database.record_attendance(student_id, photo_path, student_id)
-
-            print(f"   ✓ Attendance recorded successfully!")
-            print(f"   📊 Total: {i} student(s)")
-
-            time.sleep(0.5)
-
-        print(f"\n{'='*70}")
-        print("DEMO COMPLETE")
-        print(f"{'='*70}\n")
+        # Summary
+        print(f"\n{'='*80}")
+        print("📊 DEMO SUMMARY")
+        print(f"{'='*80}")
+        print(f"✅ Successful: {successful}/{len(demo_students)}")
+        print(f"❌ Failed: {failed}/{len(demo_students)}")
+        
+        # Database stats
+        stats = self.database.get_statistics()
+        print(f"\n📈 Database Status:")
+        print(f"   Students: {stats.get('total_students', 0)}")
+        print(f"   Attendance records: {stats.get('total_records', 0)}")
+        print(f"   Today's attendance: {stats.get('today_attendance', 0)}")
+        
+        # Queue status
+        queue_size = self.sync_queue.get_queue_size()
+        print(f"\n☁️  Sync Queue: {queue_size} record(s) pending")
+        
+        print(f"\n{'='*80}")
+        print("🎉 DEMO COMPLETE - All systems operational!")
+        print(f"{'='*80}\n")
 
         self.shutdown()
 

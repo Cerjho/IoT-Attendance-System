@@ -186,7 +186,12 @@ class RosterSyncManager:
             response = requests.get(url, headers=headers, params=params, timeout=10)
 
             if response.status_code == 200:
-                students = response.json()
+                try:
+                    students = response.json()
+                except json.JSONDecodeError:
+                    logger.error(f"Invalid JSON response from roster sync: {response.text[:200]}")
+                    return None
+                    
                 logger.info(
                     f"📥 Downloaded {len(students)} active students from new Supabase server"
                 )

@@ -40,8 +40,28 @@ class AttendanceDatabase:
 
     def _init_database(self):
         """Create tables if they don't exist"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=10)
+            cursor = conn.cursor()
+        except sqlite3.OperationalError as e:
+            if "disk" in str(e).lower() or "full" in str(e).lower():
+                logger.critical(f"Disk full - cannot create database: {e}")
+                raise SystemExit("FATAL: Disk full. Cannot initialize database.")
+            elif "locked" in str(e).lower():
+                logger.error(f"Database locked during init: {e}")
+                import time
+                time.sleep(1)
+                conn = sqlite3.connect(self.db_path, timeout=10)
+                cursor = conn.cursor()
+            else:
+                logger.critical(f"Cannot create database connection: {e}")
+                raise
+        except PermissionError as e:
+            logger.critical(f"Permission denied for database: {e}")
+            raise SystemExit("FATAL: Permission denied. Cannot access database.")
+        except Exception as e:
+            logger.critical(f"Unexpected database error: {e}")
+            raise
 
         # Students table
         cursor.execute(
@@ -100,8 +120,9 @@ class AttendanceDatabase:
     ) -> bool:
         """Add or update student record"""
         with self._lock:
+            conn = None
             try:
-                conn = sqlite3.connect(self.db_path)
+                conn = sqlite3.connect(self.db_path, timeout=10)
                 cursor = conn.cursor()
 
                 cursor.execute(
@@ -118,9 +139,23 @@ class AttendanceDatabase:
                 logger.debug(f"Student added/updated: {student_id}")
                 return True
 
+            except sqlite3.OperationalError as e:
+                if "disk" in str(e).lower() or "full" in str(e).lower():
+                    logger.error(f"Disk full - cannot add student: {e}")
+                elif "locked" in str(e).lower():
+                    logger.warning(f"Database locked, student add may have failed: {e}")
+                else:
+                    logger.error(f"Database error adding student: {e}")
+                return False
             except Exception as e:
                 logger.error(f"Error adding student: {str(e)}")
                 return False
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except:
+                        pass
 
     def record_attendance(
         self,

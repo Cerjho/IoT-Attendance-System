@@ -182,7 +182,12 @@ class MultiDeviceManager:
             )
 
             if response.status_code == 200:
-                info = response.json()
+                try:
+                    info = response.json()
+                except json.JSONDecodeError:
+                    logger.debug(f"Invalid JSON from device {ip}: {response.text[:100]}")
+                    return None
+                    
                 return {
                     'device_id': info.get('device_id', f'device_{ip.replace(".", "_")}'),
                     'device_name': info.get('hostname', 'Unknown'),
