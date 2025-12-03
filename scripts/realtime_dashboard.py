@@ -6,12 +6,19 @@ Live dashboard with WebSocket updates
 
 import json
 import logging
+import os
+import sys
 import threading
 import time
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Dict, Set
 from urllib.parse import parse_qs, urlparse
+
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from src.utils.realtime_monitor import get_monitor
 
