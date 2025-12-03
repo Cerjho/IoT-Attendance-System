@@ -923,6 +923,198 @@
             );
         };
 
+        // Real-Time Monitor Component
+        const RealTimeMonitor = () => {
+            const [metrics, setMetrics] = useState(null);
+            const [events, setEvents] = useState([]);
+            const [alerts, setAlerts] = useState([]);
+            const [systemState, setSystemState] = useState({});
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                loadMonitorData();
+                const interval = setInterval(loadMonitorData, 5000); // 5s refresh
+                return () => clearInterval(interval);
+            }, []);
+
+            const loadMonitorData = async () => {
+                try {
+                    const [metricsRes, eventsRes, alertsRes, statusRes] = await Promise.all([
+                        apiClient.get('/api/realtime/metrics'),
+                        apiClient.get('/api/realtime/events?limit=20'),
+                        apiClient.get('/api/realtime/alerts?limit=10'),
+                        apiClient.get('/api/realtime/status')
+                    ]);
+
+                    setMetrics(metricsRes.data);
+                    setEvents(eventsRes.data.events || []);
+                    setAlerts(alertsRes.data.alerts || []);
+                    setSystemState(statusRes.data);
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Error loading monitor data:', error);
+                    if (loading) setLoading(false);
+                }
+            };
+
+            if (loading) return <div className="text-center p-4">Loading real-time monitoring...</div>;
+
+            const getStatusColor = (status) => {
+                if (!status || status === 'unknown') return 'text-gray-400';
+                if (status === 'online' || status === 'healthy') return 'text-green-500';
+                if (status === 'warning') return 'text-yellow-500';
+                if (status === 'offline' || status === 'error') return 'text-red-500';
+                return 'text-gray-400';
+            };
+
+            const getStatusIcon = (status) => {
+                if (!status || status === 'unknown') return '❓';
+                if (status === 'online' || status === 'healthy') return '✅';
+                if (status === 'warning') return '⚠️';
+                if (status === 'offline' || status === 'error') return '❌';
+                return '❓';
+            };
+
+            const getAlertBadge = (severity) => {
+                const colors = {
+                    error: 'bg-red-100 text-red-800 border-red-300',
+                    warning: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                    info: 'bg-blue-100 text-blue-800 border-blue-300'
+                };
+                return colors[severity] || colors.info;
+            };
+
+            return (
+                <div className="space-y-4">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-6 rounded-lg shadow-lg">
+                        <h2 className="text-2xl font-bold mb-2">📊 Real-Time System Monitor</h2>
+                        <p className="text-purple-100">Live metrics, events, and alerts</p>
+                    </div>
+
+                    {/* System Status Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-lg shadow p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-semibold text-gray-600">Camera Status</h3>
+                                <span className={getStatusColor(systemState.camera?.status)}>{getStatusIcon(systemState.camera?.status)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500">{systemState.camera?.details || 'Unknown'}</p>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-semibold text-gray-600">Cloud Status</h3>
+                                <span className={getStatusColor(systemState.cloud?.status)}>{getStatusIcon(systemState.cloud?.status)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500">{systemState.cloud?.details || 'Unknown'}</p>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-semibold text-gray-600">SMS Status</h3>
+                                <span className={getStatusColor(systemState.sms?.status)}>{getStatusIcon(systemState.sms?.status)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500">{systemState.sms?.details || 'Unknown'}</p>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-semibold text-gray-600">Queue Status</h3>
+                                <span className={getStatusColor(systemState.queue?.status)}>{getStatusIcon(systemState.queue?.status)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500">{systemState.queue?.details || 'Unknown'}</p>
+                        </div>
+                    </div>
+
+                    {/* Metrics Grid */}
+                    {metrics && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <StatCard title="Scans Today" value={metrics.scans_today || 0} icon="📸" />
+                            <StatCard title="Scans This Hour" value={metrics.scans_this_hour || 0} icon="⏰" />
+                            <StatCard title="Success Rate" value={`${(metrics.success_rate || 0).toFixed(1)}%`} icon="✨" />
+                            <StatCard title="Queue Size" value={metrics.queue_size || 0} icon="📦" />
+                            <StatCard title="Failed Syncs" value={metrics.failed_syncs || 0} icon="⚠️" />
+                            <StatCard title="Uptime (hrs)" value={((metrics.uptime_seconds || 0) / 3600).toFixed(1)} icon="⏱️" />
+                        </div>
+                    )}
+
+                    {/* Alerts Section */}
+                    {alerts.length > 0 && (
+                        <div className="bg-white rounded-lg shadow-md p-4">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                🚨 Active Alerts
+                                <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">{alerts.length}</span>
+                            </h3>
+                            <div className="space-y-2">
+                                {alerts.map((alert, idx) => (
+                                    <div key={idx} className={`border rounded p-3 ${getAlertBadge(alert.severity)}`}>
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <p className="font-medium text-sm">{alert.message}</p>
+                                                {alert.details && (
+                                                    <p className="text-xs mt-1 opacity-75">{alert.details}</p>
+                                                )}
+                                            </div>
+                                            <span className="text-xs opacity-75 ml-2">
+                                                {new Date(alert.timestamp).toLocaleTimeString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Events Timeline */}
+                    <div className="bg-white rounded-lg shadow-md p-4">
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                            📋 Recent Events
+                        </h3>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                            {events.length === 0 ? (
+                                <p className="text-gray-500 text-center py-4">No recent events</p>
+                            ) : (
+                                events.map((event, idx) => {
+                                    const typeColors = {
+                                        scan: 'bg-blue-50 border-blue-200',
+                                        sync: 'bg-green-50 border-green-200',
+                                        error: 'bg-red-50 border-red-200',
+                                        warning: 'bg-yellow-50 border-yellow-200',
+                                        info: 'bg-gray-50 border-gray-200'
+                                    };
+                                    const typeIcons = {
+                                        scan: '📸',
+                                        sync: '☁️',
+                                        error: '❌',
+                                        warning: '⚠️',
+                                        info: 'ℹ️'
+                                    };
+                                    
+                                    return (
+                                        <div key={idx} className={`border rounded p-3 ${typeColors[event.event_type] || typeColors.info}`}>
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-lg">{typeIcons[event.event_type] || typeIcons.info}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-sm">{event.message}</p>
+                                                    {event.details && (
+                                                        <p className="text-xs text-gray-600 mt-1">{JSON.stringify(event.details)}</p>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                    {new Date(event.timestamp).toLocaleTimeString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // Configuration Editor Component
         const ConfigEditor = () => {
             const [config, setConfig] = useState(null);
@@ -1318,7 +1510,7 @@
                     </header>
 
                     <nav className="flex gap-1 sm:gap-2 mb-4 md:mb-6 border-b border-gray-300 overflow-x-auto">
-                        {['overview', 'devices', 'discover', 'locations', 'config'].map((tab) => (
+                        {['overview', 'monitor', 'devices', 'discover', 'locations', 'config'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -1328,7 +1520,7 @@
                                         : 'text-gray-600 hover:text-gray-800'
                                 }`}
                             >
-                                {tab === 'config' ? '⚙️ Config' : tab}
+                                {tab === 'config' ? '⚙️ Config' : tab === 'monitor' ? '📊 Monitor' : tab}
                             </button>
                         ))}
                     </nav>
@@ -1340,6 +1532,8 @@
                                 <DeviceList />
                             </>
                         )}
+
+                        {activeTab === 'monitor' && <RealTimeMonitor />}
 
                         {activeTab === 'devices' && <DeviceList />}
 

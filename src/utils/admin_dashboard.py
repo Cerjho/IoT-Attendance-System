@@ -14,6 +14,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import threading
 import time
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -23,6 +24,34 @@ from typing import Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 logger = logging.getLogger(__name__)
+
+# Import realtime monitor
+try:
+    from .realtime_monitor import get_monitor
+except ImportError:
+    get_monitor = None
+    logger.warning("Real-time monitor not available")
+
+
+class SSEClient:
+    """Server-Sent Events client for real-time updates"""
+    
+    def __init__(self, wfile, client_address):
+        self.wfile = wfile
+        self.client_address = client_address
+        self.last_update = datetime.now()
+        self.active = True
+
+    def send_event(self, data: Dict):
+        """Send Server-Sent Event to client"""
+        try:
+            message = f"data: {json.dumps(data)}\n\n"
+            self.wfile.write(message.encode())
+            self.wfile.flush()
+            self.last_update = datetime.now()
+        except Exception as e:
+            logger.debug(f"SSE client {self.client_address} disconnected: {e}")
+            self.active = False
 
 
 class AdminAPIHandler(BaseHTTPRequestHandler):
@@ -37,6 +66,9 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
     api_key = None
     allowed_ips = []
     device_manager = None  # Multi-device manager
+    realtime_monitor = None  # Real-time monitoring
+    sse_clients = set()  # SSE clients for real-time updates
+    sse_lock = None  # Thread lock for SSE clients
 
     def log_message(self, format, *args):
         """Override to use standard logger."""
@@ -349,6 +381,19 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
                 self._handle_device_command(device_id, command)
             elif path == "/locations":
                 self._handle_device_locations()
+            # Real-time monitoring endpoints
+            elif path == "/api/realtime/status":
+                self._handle_realtime_status()
+            elif path == "/api/realtime/metrics":
+                self._handle_realtime_metrics()
+            elif path == "/api/realtime/events":
+                limit = int(query_params.get("limit", [50])[0])
+                self._handle_realtime_events(limit)
+            elif path == "/api/realtime/alerts":
+                limit = int(query_params.get("limit", [20])[0])
+                self._handle_realtime_alerts(limit)
+            elif path == "/api/realtime/stream":
+                self._handle_realtime_stream()
             else:
                 self._send_json_response({"error": "Not found"}, 404)
 
@@ -866,6 +911,122 @@ class AdminAPIHandler(BaseHTTPRequestHandler):
             logger.error(f"Error getting device locations: {e}", exc_info=True)
             self._send_json_response({"error": str(e)}, 500)
 
+    def _handle_realtime_status(self):
+        """Real-time system status endpoint."""
+        if not self.realtime_monitor:
+            self._send_json_response({"error": "Real-time monitoring not enabled"}, 503)
+            return
+
+        try:
+            status = self.realtime_monitor.get_system_state()
+            self._send_json_response(status)
+        except Exception as e:
+            logger.error(f"Error getting realtime status: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_realtime_metrics(self):
+        """Real-time metrics endpoint."""
+        if not self.realtime_monitor:
+            self._send_json_response({"error": "Real-time monitoring not enabled"}, 503)
+            return
+
+        try:
+            metrics = self.realtime_monitor.get_metrics()
+            self._send_json_response(metrics)
+        except Exception as e:
+            logger.error(f"Error getting realtime metrics: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_realtime_events(self, limit: int = 50):
+        """Recent events endpoint."""
+        if not self.realtime_monitor:
+            self._send_json_response({"error": "Real-time monitoring not enabled"}, 503)
+            return
+
+        try:
+            events = self.realtime_monitor.get_recent_events(limit)
+            self._send_json_response({
+                "events": events,
+                "count": len(events),
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Error getting realtime events: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_realtime_alerts(self, limit: int = 20):
+        """Recent alerts endpoint."""
+        if not self.realtime_monitor:
+            self._send_json_response({"error": "Real-time monitoring not enabled"}, 503)
+            return
+
+        try:
+            alerts = self.realtime_monitor.get_recent_alerts(limit)
+            self._send_json_response({
+                "alerts": alerts,
+                "count": len(alerts),
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Error getting realtime alerts: {e}", exc_info=True)
+            self._send_json_response({"error": str(e)}, 500)
+
+    def _handle_realtime_stream(self):
+        """Server-Sent Events stream for real-time updates."""
+        if not self.realtime_monitor:
+            self._send_json_response({"error": "Real-time monitoring not enabled"}, 503)
+            return
+
+        try:
+            # Send SSE headers
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            # Create SSE client
+            client = SSEClient(self.wfile, self.client_address)
+            
+            # Add to clients set
+            if self.sse_lock:
+                with self.sse_lock:
+                    self.sse_clients.add(client)
+            else:
+                self.sse_clients.add(client)
+
+            # Send initial data
+            client.send_event({
+                "type": "connected",
+                "timestamp": datetime.now().isoformat()
+            })
+
+            # Keep connection alive
+            while client.active:
+                time.sleep(5)
+                # Send periodic updates
+                try:
+                    data = self.realtime_monitor.get_dashboard_data()
+                    client.send_event({
+                        "type": "update",
+                        "data": data,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                except Exception as e:
+                    logger.debug(f"Error sending SSE update: {e}")
+                    break
+
+        except Exception as e:
+            logger.error(f"Error in SSE stream: {e}", exc_info=True)
+        finally:
+            # Remove client from set
+            if self.sse_lock:
+                with self.sse_lock:
+                    self.sse_clients.discard(client)
+            else:
+                self.sse_clients.discard(client)
+
     def _get_queue_size(self) -> int:
         """Get sync queue size."""
         if not self.db_path or not Path(self.db_path).exists():
@@ -1208,6 +1369,19 @@ class AdminDashboard:
             except Exception as e:
                 logger.error(f"Failed to enable multi-device management: {e}")
 
+        # Initialize real-time monitoring
+        self.realtime_monitor = None
+        if get_monitor:
+            try:
+                self.realtime_monitor = get_monitor(db_path)
+                self.realtime_monitor.start()
+                logger.info("Real-time monitoring ENABLED")
+            except Exception as e:
+                logger.error(f"Failed to enable real-time monitoring: {e}")
+                self.realtime_monitor = None
+        else:
+            logger.warning("Real-time monitor not available (module not imported)")
+
         # Set class variables for handler
         AdminAPIHandler.config = config
         AdminAPIHandler.metrics_collector = metrics_collector
@@ -1217,6 +1391,9 @@ class AdminDashboard:
         AdminAPIHandler.api_key = self.api_key
         AdminAPIHandler.allowed_ips = self.allowed_ips
         AdminAPIHandler.device_manager = self.device_manager
+        AdminAPIHandler.realtime_monitor = self.realtime_monitor
+        AdminAPIHandler.sse_clients = set()
+        AdminAPIHandler.sse_lock = threading.Lock()
 
         if self.auth_enabled:
             logger.info(f"Admin dashboard initialized on {host}:{port} (AUTH ENABLED)")
@@ -1249,6 +1426,10 @@ class AdminDashboard:
                 self.server_thread.join(timeout=5)
 
             logger.info("Admin dashboard stopped")
+
+        # Stop real-time monitoring
+        if self.realtime_monitor:
+            self.realtime_monitor.stop()
 
         # Stop multi-device manager
         if self.device_manager:

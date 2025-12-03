@@ -146,15 +146,16 @@ These project-specific guidelines help AI coding agents work productively in thi
   - **CORS:** Preflight handling via `do_OPTIONS()`; configurable origins.
   - **Endpoints:** `/health`, `/status`, `/metrics`, `/metrics/prometheus`, `/scans/recent`, `/queue/status`, `/config`, `/system/info`.
   - **Standalone mode:** Run via `scripts/start_dashboard_only.py` without camera/attendance system for monitoring only.
-- **Real-time monitoring (`src/utils/realtime_monitor.py` + `scripts/realtime_dashboard.py`):**
-  - **Core engine:** Event tracking, metrics calculation, alert generation, system state tracking; thread-safe with background monitoring (5s interval).
-  - **Web dashboard:** Beautiful gradient UI with Server-Sent Events (SSE) for live updates; responsive design; no page refresh needed.
-  - **Metrics tracked:** Scans today/hour, success rate, queue size, failed syncs, uptime, component health (camera/cloud/SMS).
+- **Real-time monitoring (integrated with fleet dashboard):**
+  - **Core engine (`src/utils/realtime_monitor.py`):** Event tracking, metrics calculation, alert generation, system state tracking; thread-safe with background monitoring (5s interval).
+  - **Integration:** Real-time monitoring now integrated into admin dashboard at port 8080; no separate dashboard needed.
+  - **API endpoints (admin dashboard):** `/api/realtime/status`, `/api/realtime/metrics`, `/api/realtime/events`, `/api/realtime/alerts`, `/api/realtime/stream` (SSE).
+  - **Fleet Dashboard UI:** Access monitoring via "📊 Monitor" tab in multi-device dashboard at `http://localhost:8080/`.
+  - **Metrics tracked:** Scans today/hour, success rate, queue size, failed syncs, uptime, component health (camera/cloud/SMS/queue).
   - **Alert conditions:** Queue >50 (warning), failed syncs >10 (error), success rate <80% with >10 scans (warning); 5-min deduplication.
-  - **API endpoints:** `/api/status`, `/api/metrics`, `/api/events`, `/api/alerts`, `/api/stream` (SSE).
   - **Integration points:** Camera status, photo captures, attendance records, cloud sync, SMS notifications logged automatically.
-  - **Start dashboard:** `bash scripts/start_monitor.sh [port]` (default 8888); access at `http://localhost:8888/dashboard`.
-  - **Usage pattern:**
+  - **Start integrated dashboard:** `bash scripts/start_dashboard.sh` (port 8080); access at `http://localhost:8080/` then click "Monitor" tab.
+  - **Usage pattern (in code):**
     ```python
     from src.utils.realtime_monitor import get_monitor
     monitor = get_monitor()
@@ -162,6 +163,7 @@ These project-specific guidelines help AI coding agents work productively in thi
     monitor.log_event("scan", "Attendance recorded", {"student_id": "2021001"})
     monitor.update_system_state("camera", "online", "640x480")
     ```
+  - **Note:** Old standalone dashboard (`scripts/realtime_dashboard.py` on port 8888) deprecated in favor of integrated dashboard.
 - **Supabase REST details:**
   - Attendance insert: `POST {url}/rest/v1/attendance` with headers `apikey`, `Authorization: Bearer <key>`, `Prefer: return=representation`.
   - Payload fields: `student_id` (UUID), `date` (ISO date), `time_in` or `time_out` (ISO time), `status`, `device_id`, `remarks`.
@@ -209,10 +211,11 @@ These project-specific guidelines help AI coding agents work productively in thi
 - **HTTPS Setup:**
   - `scripts/nginx_dashboard.conf` - Nginx reverse proxy config
   - `scripts/generate_ssl_cert.sh` - SSL certificate generation
-- **Real-time Monitoring:**
+- **Real-time Monitoring (Integrated):**
+  - Access via admin dashboard at `http://localhost:8080/` → "📊 Monitor" tab
   - `docs/REALTIME_MONITORING.md` - Complete monitoring guide
   - `docs/MONITORING_QUICKREF.md` - Quick reference card
-  - `REALTIME_MONITORING_SUMMARY.md` - Implementation details
+  - `docs/summaries/REALTIME_MONITORING_SUMMARY.md` - Implementation details
 
 ## Examples
 - Determine expected scan type and status:
@@ -244,15 +247,16 @@ These project-specific guidelines help AI coding agents work productively in thi
   sudo ln -s /etc/nginx/sites-available/dashboard /etc/nginx/sites-enabled/
   sudo nginx -t && sudo systemctl reload nginx
   ```
-- Start real-time monitoring:
+- Start integrated dashboard with real-time monitoring:
   ```bash
-  bash scripts/start_monitor.sh
-  # Access: http://localhost:8888/dashboard
+  bash scripts/start_dashboard.sh
+  # Access: http://localhost:8080/ then click "📊 Monitor" tab
   ```
-- Monitor metrics via API:
+- Monitor metrics via API (requires authentication):
   ```bash
-  curl http://localhost:8888/api/metrics | jq
-  curl -N http://localhost:8888/api/stream  # Live event stream
+  API_KEY=$(grep DASHBOARD_API_KEY .env | cut -d= -f2)
+  curl -H "Authorization: Bearer $API_KEY" http://localhost:8080/api/realtime/metrics
+  curl -N -H "Authorization: Bearer $API_KEY" http://localhost:8080/api/realtime/stream  # Live SSE stream
   ```
 
 ## Detailed Thresholds & Queues
