@@ -78,3 +78,48 @@ config/*.pre-security-*.json
 .env.*
 !.env.example
 env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data directories (keep structure, ignore contents)
+data/photos/*
+!data/photos/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+data/exports/*
+!data/exports/.gitkeep
+data/qr_codes/*
+!data/qr_codes/.gitkeep
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Environment
+.env
+*.db
+*.db-journal
+
+# Test outputs
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+temp_*
