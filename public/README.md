@@ -29,7 +29,7 @@ This directory contains the public-facing attendance viewer that parents can acc
 
 Update `config/config.json`:
 ```json
-"attendance_view_url": "https://cerjho.github.io/IoT-Attendance-System/view-attendance.html?student_id={student_id}"
+"attendance_view_url": "https://mabini-hs-attendance.vercel.app/Parents/?student_id={student_id}"
 ```
 
 ### Option 2: Supabase Storage
