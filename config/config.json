@@ -207,9 +207,9 @@
   "rgb_led": {
     "enabled": true,
     "gpio_pins": {
-      "red": 22,
-      "green": 27,
-      "blue": 17
+      "red": 26,
+      "green": 6,
+      "blue": 5
     },
     "colors": {
       "qr_detected": [
@@ -285,7 +285,7 @@
     "absence_alert_template": "\u2757 ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}\n\n- Mabini High School",
     "weekly_summary_template": "\ud83d\udcca WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}\n\n- Mabini High School",
     "monthly_summary_template": "\ud83d\udcca MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}\n\n- Mabini High School",
-    "attendance_view_url": "https://mabini-hs-attendance.vercel.app/Parents/?student_id={student_id}",
+    "attendance_view_url": "https://mabini-hs-attendance.vercel.app/Parents/View.html?student_id={student_id}",
     "send_on_capture": true,
     "send_late_alerts": true,
     "send_absence_alerts": false,
