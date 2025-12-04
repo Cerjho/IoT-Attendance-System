@@ -59,7 +59,6 @@ from src.network import ConnectivityMonitor
 from src.notifications import SMSNotifier
 from src.sync.roster_sync import RosterSyncManager
 from src.utils import load_config, setup_logger
-from src.utils.realtime_monitor import get_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -161,11 +160,6 @@ class IoTAttendanceSystem:
         # Initialize schedule manager for school schedule
         self.schedule_manager = ScheduleManager(self.config)
 
-        # Initialize real-time monitoring
-        self.monitor = get_monitor(self.database.db_path)
-        self.monitor.start()
-        logger.info("Real-time monitoring started")
-
         # Auto-sync roster on startup
         if self.roster_sync.enabled:
             logger.info("Starting roster sync on system startup...")
@@ -258,10 +252,6 @@ class IoTAttendanceSystem:
         # Session tracking
         self.session_count = 0
 
-        # Update system status periodically
-        self._status_thread = threading.Thread(target=self._update_system_status, daemon=True)
-        self._status_thread.start()
-
         logger.info("IoT Attendance System initialized")
 
     def initialize_camera(self) -> bool:
@@ -282,16 +272,13 @@ class IoTAttendanceSystem:
 
             if not self.camera.start():
                 logger.error("Failed to start camera")
-                self.monitor.update_system_state("camera", "error", "Failed to start")
                 return False
 
             logger.info(f"✓ Camera started: {width}x{height}")
-            self.monitor.update_system_state("camera", "online", f"{width}x{height}")
             return True
 
         except Exception as e:
             logger.error(f"Error initializing camera: {str(e)}")
-            self.monitor.update_system_state("camera", "error", str(e))
             return False
 
     def _show_message(
@@ -517,21 +504,10 @@ class IoTAttendanceSystem:
                 return None
 
             logger.info(f"Photo saved: {filepath}")
-            
-            # Log to real-time monitor
-            self.monitor.log_event("photo", f"Photo saved for {student_id}", {
-                "student_id": student_id,
-                "filepath": filepath,
-                "size_kb": os.path.getsize(filepath) // 1024
-            })
-            
             return filepath
 
         except Exception as e:
             logger.error(f"Error saving photo: {str(e)}")
-            self.monitor.log_event("error", f"Photo save failed: {str(e)}", {
-                "student_id": student_id
-            })
             return None
 
     def upload_to_database(
@@ -559,14 +535,6 @@ class IoTAttendanceSystem:
 
             if record_id:
                 logger.info(f"✅ Attendance uploaded to database (Record ID: {record_id})")
-                
-                # Log to real-time monitor
-                self.monitor.log_event("scan", f"Attendance recorded: {student_id}", {
-                    "student_id": student_id,
-                    "record_id": record_id,
-                    "scan_type": scan_type,
-                    "status": status
-                })
 
                 # Attempt cloud sync if enabled and sync_on_capture is true
                 if self.cloud_sync.enabled and self.cloud_sync.sync_on_capture:
@@ -587,17 +555,9 @@ class IoTAttendanceSystem:
                     
                     if sync_success:
                         logger.info(f"✅ Cloud sync successful for record {record_id}")
-                        self.monitor.log_event("sync", f"Cloud sync successful: {student_id}", {
-                            "record_id": record_id,
-                            "student_id": student_id
-                        })
                     else:
                         logger.warning(f"⚠️ Cloud sync failed for record {record_id}, queued for retry")
                         logger.debug(f"Record will auto-retry when connectivity restored")
-                        self.monitor.log_event("warning", f"Cloud sync queued: {student_id}", {
-                            "record_id": record_id,
-                            "student_id": student_id
-                        })
 
                 # Send SMS notification to parent if enabled
                 if self.sms_notifier.enabled and self.config.get(
@@ -626,19 +586,11 @@ class IoTAttendanceSystem:
                             logger.info(
                                 f"✅ SMS notification sent successfully to parent of {student_id}"
                             )
-                            self.monitor.log_event("sms", f"SMS sent: {student_id}", {
-                                "student_id": student_id,
-                                "phone": student_data.get("parent_phone")
-                            })
                         else:
                             logger.warning(
                                 f"⚠️ SMS failed for {student_id} - attendance recorded locally"
                             )
                             logger.debug(f"Attendance is saved, SMS can be resent manually if needed")
-                            self.monitor.log_event("warning", f"SMS failed: {student_id}", {
-                                "student_id": student_id,
-                                "phone": student_data.get("parent_phone")
-                            })
                     else:
                         logger.debug(
                             f"No parent phone number for student {student_id}, skipping SMS"
@@ -1139,30 +1091,6 @@ class IoTAttendanceSystem:
         r *= kr
         out = cv2.merge((b, g, r))
         return np.clip(out, 0, 255).astype(np.uint8)
-
-    def _update_system_status(self):
-        """Periodically update system component status"""
-        while True:
-            try:
-                # Update cloud status
-                if self.cloud_sync.enabled:
-                    if self.connectivity.is_online():
-                        self.monitor.update_system_state("cloud", "online", "Connected")
-                    else:
-                        self.monitor.update_system_state("cloud", "offline", "No connectivity")
-                else:
-                    self.monitor.update_system_state("cloud", "offline", "Disabled in config")
-                
-                # Update SMS status
-                if self.sms_notifier.enabled:
-                    self.monitor.update_system_state("sms", "online", "Ready")
-                else:
-                    self.monitor.update_system_state("sms", "offline", "Disabled in config")
-                
-                time.sleep(10)  # Update every 10 seconds
-            except Exception as e:
-                logger.error(f"Error updating system status: {e}")
-                time.sleep(30)
 
     def _background_sync_loop(self):
         """Background thread for processing sync queue"""

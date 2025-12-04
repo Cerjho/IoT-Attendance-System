@@ -131,14 +131,6 @@
     "enabled": true,
     "export_format": "prometheus"
   },
-  "admin_dashboard": {
-    "enabled": false,
-    "host": "0.0.0.0",
-    "port": 8080,
-    "auth_enabled": false,
-    "multi_device_enabled": false,
-    "allowed_ips": []
-  },
   "device_id": "${DEVICE_ID}",
   "device_name": "Attendance Device",
   "location": {

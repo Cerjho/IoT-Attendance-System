@@ -1,5 +1,7 @@
 # Production Deployment Guide
 
+> **⚠️ Note:** This guide contains references to the removed admin dashboard features. For current production deployment, refer to the main `README.md`. Dashboard-specific commands and endpoints are no longer available.
+
 ## Quick Start
 
 ### 1. Deploy to Production

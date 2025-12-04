@@ -1,6 +1,8 @@
 # Quick Access Guide
 
-## 🚀 Dashboard Access (HTTPS Only)
+> **⚠️ DEPRECATED:** This document describes the removed admin dashboard and multi-device management features. These have been moved to a separate monitoring system project. For current attendance system usage, see `README.md` and `docs/QUICK_REFERENCE.md`.
+
+## 🚀 Dashboard Access (HTTPS Only) [REMOVED]
 
 **Production URL:**
 ```

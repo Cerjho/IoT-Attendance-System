@@ -1,5 +1,7 @@
 # IoT Attendance System - Deployment Guide
 
+> **⚠️ Note:** This guide contains references to the removed admin dashboard and multi-device management features. For current deployment instructions, see the main `README.md`. Dashboard-specific sections are now obsolete.
+
 Complete guide for deploying the IoT Attendance System to production.
 
 ## Table of Contents

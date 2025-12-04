@@ -1,5 +1,7 @@
 # Production Deployment - Quick Reference
 
+> **Note:** Admin dashboard and multi-device management features have been removed. For monitoring, refer to separate monitoring system project. This guide covers the core attendance system only.
+
 ## 🚀 Initial Deployment
 
 ```bash
@@ -17,7 +19,6 @@ bash scripts/production_check.sh
 python3 scripts/monitor.py
 
 # Service status
-sudo systemctl status attendance-dashboard
 sudo systemctl status attendance-system
 ```
 
@@ -47,7 +48,6 @@ sudo journalctl -u attendance-system -p err
 ### Required Secrets (.env)
 ```bash
 URL_SIGNING_SECRET=<64-char-hex>
-DASHBOARD_API_KEY=<32-char-random>
 SUPABASE_URL=<your-supabase-url>
 SUPABASE_KEY=<your-supabase-key>
 ```
@@ -59,16 +59,6 @@ chmod 755 scripts/*.sh            # Make scripts executable
 ```
 
 ## 🔧 Common Commands
-
-### Dashboard Access
-```bash
-# Local
-curl http://localhost:8080/health
-
-# With auth
-curl -H "Authorization: Bearer $DASHBOARD_API_KEY" \
-     http://localhost:8080/status
-```
 
 ### Database Operations
 ```bash
@@ -112,18 +102,6 @@ source venv/bin/activate
 pip list | grep -E "(opencv|requests|pyzbar)"
 ```
 
-### Dashboard Not Responding
-```bash
-# Check port
-sudo netstat -tulpn | grep 8080
-
-# Restart
-sudo systemctl restart attendance-dashboard
-
-# Check process
-ps aux | grep admin_dashboard
-```
-
 ### High Sync Queue
 ```bash
 # Check queue
@@ -136,17 +114,6 @@ ping -c 3 ddblgwzylvwuucnpmtzi.supabase.co
 # Check cloud config
 grep -A 5 '"cloud"' config/config.json
 ```
-
-## 📈 Monitoring Endpoints
-
-| Endpoint | Auth Required | Description |
-|----------|--------------|-------------|
-| `/health` | No | Health check |
-| `/status` | Yes | System status |
-| `/metrics` | Yes | JSON metrics |
-| `/metrics/prometheus` | Yes | Prometheus format |
-| `/scans/recent` | Yes | Recent scans |
-| `/queue/status` | Yes | Sync queue status |
 
 ## ⚡ Performance
 
@@ -178,7 +145,6 @@ cd /home/iot/attendance-system
 git pull origin main
 source venv/bin/activate
 pip install -r requirements.txt --upgrade
-sudo systemctl restart attendance-dashboard
 sudo systemctl restart attendance-system
 ```
 
@@ -186,7 +152,7 @@ sudo systemctl restart attendance-system
 
 - **Logs**: `tail -f data/logs/system.log`
 - **Health**: `bash scripts/production_check.sh`
-- **Stop All**: `sudo systemctl stop attendance-system attendance-dashboard`
+- **Stop All**: `sudo systemctl stop attendance-system`
 - **GitHub**: https://github.com/Cerjho/IoT-Attendance-System
 
 ---

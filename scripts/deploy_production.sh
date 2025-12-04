@@ -20,33 +20,13 @@ echo ""
 
 # 1. Create systemd services
 echo "1️⃣  Setting up systemd services..."
-
-# Dashboard service
-sudo tee /etc/systemd/system/attendance-dashboard.service > /dev/null <<EOF
-[Unit]
-Description=IoT Attendance System - Admin Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=$USER
-WorkingDirectory=$PROJECT_ROOT
-ExecStart=/bin/bash $PROJECT_ROOT/scripts/start_dashboard.sh
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
+echo "ℹ️  Dashboard service removed (now separate project)"
 
 # Main attendance service
 sudo tee /etc/systemd/system/attendance-system.service > /dev/null <<EOF
 [Unit]
 Description=IoT Attendance System - Main Service
-After=network.target attendance-dashboard.service
-Requires=attendance-dashboard.service
+After=network.target
 
 [Service]
 Type=simple
@@ -69,7 +49,6 @@ echo "✅ Systemd services created"
 echo ""
 echo "2️⃣  Enabling services..."
 sudo systemctl daemon-reload
-sudo systemctl enable attendance-dashboard.service
 sudo systemctl enable attendance-system.service
 echo "✅ Services enabled"
 
@@ -168,29 +147,10 @@ else
     exit 1
 fi
 
-# 8. Start services
+# 8. Services configured
 echo ""
-echo "8️⃣  Starting services..."
-sudo systemctl start attendance-dashboard.service
-sleep 3
-
-if systemctl is-active --quiet attendance-dashboard.service; then
-    echo "✅ Dashboard service started"
-else
-    echo "❌ Dashboard service failed to start"
-    sudo journalctl -u attendance-dashboard.service -n 20
-    exit 1
-fi
-
-# 9. Verify API
-echo ""
-echo "9️⃣  Verifying API endpoints..."
-sleep 2
-if curl -s http://localhost:8080/health > /dev/null 2>&1; then
-    echo "✅ Dashboard API responding"
-else
-    echo "⚠️  Dashboard API not responding yet (may still be starting)"
-fi
+echo "8️⃣  Services configured (ready to start)..."
+echo "ℹ️  Dashboard service removed - now separate project"
 
 echo ""
 echo "========================================================================"
@@ -198,24 +158,17 @@ echo "DEPLOYMENT COMPLETE"
 echo "========================================================================"
 echo ""
 echo "Services installed:"
-echo "  • attendance-dashboard.service"
 echo "  • attendance-system.service"
 echo ""
 echo "Management commands:"
-echo "  sudo systemctl status attendance-dashboard"
 echo "  sudo systemctl status attendance-system"
 echo "  sudo systemctl start attendance-system    # Start main system"
 echo "  sudo systemctl stop attendance-system     # Stop main system"
-echo "  sudo systemctl restart attendance-dashboard"
+echo "  sudo systemctl restart attendance-system"
 echo ""
 echo "Logs:"
-echo "  sudo journalctl -u attendance-dashboard -f"
 echo "  sudo journalctl -u attendance-system -f"
-echo "  tail -f data/logs/system.log"
-echo ""
-echo "Dashboard:"
-echo "  http://localhost:8080"
-echo "  http://192.168.1.22:8080 (LAN)"
+echo "  tail -f data/logs/attendance_system.log"
 echo ""
 echo "Next steps:"
 echo "  1. Start main system: sudo systemctl start attendance-system"

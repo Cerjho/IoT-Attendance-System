@@ -38,29 +38,17 @@ These project-specific guidelines help AI coding agents work productively in thi
 
 ## Configuration & Secrets
 - **Config file:** `config/config.json` for feature flags and service settings (e.g., `cloud.enabled`, Supabase `url`/`api_key`). Use `src/utils/config_loader.py` patterns when adding config.
-- **Env vars:** `.env` for credentials (loaded by `scripts/start_attendance.sh` and `scripts/start_dashboard.sh`). Do not hardcode secrets.
+- **Env vars:** `.env` for credentials (loaded by `scripts/start_attendance.sh`). Do not hardcode secrets.
   - Required: `SUPABASE_URL`, `SUPABASE_KEY`, `DEVICE_ID`
-  - Optional: `DASHBOARD_API_KEY` (for admin dashboard authentication)
   - SMS: `SMS_USERNAME`, `SMS_PASSWORD`, `SMS_DEVICE_ID`, `SMS_API_URL`
 - **Device ID:** `device_id` in config is used in cloud sync status; ensure it's set.
-- **Dashboard auth:** Set `admin_dashboard.auth_enabled: true` in config and `DASHBOARD_API_KEY` in `.env` for secure remote access.
 
 ## Run & Test Workflows
 - **Start (GUI/headless):**
   - `bash scripts/start_attendance.sh [--headless|--demo]`
   - Shim: `start_attendance.sh` at repo root delegates to the script above.
-- **Start (dashboard only):**
-  - `bash scripts/start_dashboard.sh` - Standalone admin dashboard without camera requirement
-  - Access at `http://localhost:8080` (requires API key if auth enabled)
-- **Start (real-time monitoring):**
-  - `bash scripts/start_monitor.sh [port]` - Real-time monitoring dashboard (default port 8888)
-  - Access at `http://localhost:8888/dashboard` - Live system metrics, events, alerts
 - **Direct run:** `python attendance_system.py [--demo]`
 - **Pytest:** `pytest -q` (see `pytest.ini`; markers: `hardware`, `integration`). Prefer unit tests under `tests/` and avoid hardware markers unless necessary.
-- **Dashboard tests:**
-  - `bash scripts/tests/test_endpoints.sh <api_key>` - Test all 10 API endpoints
-  - `bash scripts/tests/test_security.sh <api_key>` - Validate authentication
-  - `bash scripts/tests/test_ip_whitelist.sh <api_key>` - Validate IP restrictions
 - **Health checks:**
   - Roster: `python utils/test-scripts/test_roster_sync.py`
   - Face quality: `python utils/test-scripts/test_face_quality.py`
@@ -139,31 +127,6 @@ These project-specific guidelines help AI coding agents work productively in thi
   - **Queue validation (`src/utils/queue_validator.py`):** Validate data with `QueueDataValidator.validate_attendance()` before queueing; auto-fix common issues; sanitize invalid fields.
   - **File locking (`src/utils/file_locks.py`):** Use `DatabaseLock` for critical DB sections, `PhotoLock` for photo operations, or `file_lock()` context manager for any file; prevents races.
   - **Structured logging (`src/utils/structured_logging.py`):** Set correlation IDs with `set_correlation_id()` at operation boundaries; use `StructuredLogger` for rich context; JSON logs for monitoring.
-- **Admin dashboard (`src/utils/admin_dashboard.py`):**
-  - **Authentication:** API key via `Authorization: Bearer <key>` or `X-API-Key: <key>` header; constant-time comparison prevents timing attacks.
-  - **IP whitelisting:** Configure `admin_dashboard.allowed_ips` array in config (supports CIDR notation like `192.168.1.0/24`).
-  - **Security headers:** HSTS, X-Frame-Options, X-XSS-Protection, X-Content-Type-Options automatically added.
-  - **CORS:** Preflight handling via `do_OPTIONS()`; configurable origins.
-  - **Endpoints:** `/health`, `/status`, `/metrics`, `/metrics/prometheus`, `/scans/recent`, `/queue/status`, `/config`, `/system/info`.
-  - **Standalone mode:** Run via `scripts/start_dashboard_only.py` without camera/attendance system for monitoring only.
-- **Real-time monitoring (integrated with fleet dashboard):**
-  - **Core engine (`src/utils/realtime_monitor.py`):** Event tracking, metrics calculation, alert generation, system state tracking; thread-safe with background monitoring (5s interval).
-  - **Integration:** Real-time monitoring now integrated into admin dashboard at port 8080; no separate dashboard needed.
-  - **API endpoints (admin dashboard):** `/api/realtime/status`, `/api/realtime/metrics`, `/api/realtime/events`, `/api/realtime/alerts`, `/api/realtime/stream` (SSE).
-  - **Fleet Dashboard UI:** Access monitoring via "📊 Monitor" tab in multi-device dashboard at `http://localhost:8080/`.
-  - **Metrics tracked:** Scans today/hour, success rate, queue size, failed syncs, uptime, component health (camera/cloud/SMS/queue).
-  - **Alert conditions:** Queue >50 (warning), failed syncs >10 (error), success rate <80% with >10 scans (warning); 5-min deduplication.
-  - **Integration points:** Camera status, photo captures, attendance records, cloud sync, SMS notifications logged automatically.
-  - **Start integrated dashboard:** `bash scripts/start_dashboard.sh` (port 8080); access at `http://localhost:8080/` then click "Monitor" tab.
-  - **Usage pattern (in code):**
-    ```python
-    from src.utils.realtime_monitor import get_monitor
-    monitor = get_monitor()
-    monitor.start()
-    monitor.log_event("scan", "Attendance recorded", {"student_id": "2021001"})
-    monitor.update_system_state("camera", "online", "640x480")
-    ```
-  - **Note:** Old standalone dashboard (`scripts/realtime_dashboard.py` on port 8888) deprecated in favor of integrated dashboard.
 - **Supabase REST details:**
   - Attendance insert: `POST {url}/rest/v1/attendance` with headers `apikey`, `Authorization: Bearer <key>`, `Prefer: return=representation`.
   - Payload fields: `student_id` (UUID), `date` (ISO date), `time_in` or `time_out` (ISO time), `status`, `device_id`, `remarks`.
@@ -190,32 +153,12 @@ These project-specific guidelines help AI coding agents work productively in thi
 - **Do:** Use `DiskMonitor` to check space before saving photos/logs; use `CircuitBreaker` for all Supabase calls; use `SafeAttendanceDB` for atomic attendance+queue saves.
 - **Do:** Configure camera recovery params in config; leverage auto-retry and health checks for production deployments.
 - **Do:** Use `NetworkTimeouts` for all network calls (don't hardcode timeouts); validate queue data before insert; use file locking for critical sections; set correlation IDs for tracing.
-- **Do:** Enable dashboard authentication for remote access; use `DASHBOARD_API_KEY` env var; configure IP whitelist for additional security.
-- **Do:** Use `scripts/start_dashboard.sh` to ensure `.env` is loaded; never run dashboard Python directly in production.
-- **Do:** Test dashboard endpoints with `scripts/tests/test_*.sh` after security changes; verify authentication working before exposing remotely.
 - **Don't:** Hardcode secrets; bypass queue when offline; duplicate schedule/quality logic outside existing modules.
 - **Don't:** Introduce SDKs without justification; break `start_attendance.sh` env loading behavior.
 - **Don't:** Skip disk space checks before file writes; make direct REST calls without circuit breaker; write attendance and queue separately (use transactions); use hardcoded timeouts; skip queue validation; write to DB/photos without locks in concurrent code.
-- **Don't:** Expose dashboard to internet without authentication; commit API keys to git; disable auth for convenience in production.
-- **Don't:** Run dashboard on port 8080 exposed to internet (use Nginx reverse proxy with HTTPS instead).
 
 ## Useful References
 - `README.md` (overview, commands), `PROJECT_STRUCTURE.md` (module map), `docs/technical/SYSTEM_OVERVIEW.md` (architecture), `docs/technical/AUTO_CAPTURE.md` (quality), `supabase/migrations/` (schema), `tests/` (usage examples).
-- **Dashboard & Security:**
-  - `docs/DASHBOARD_DEPLOYMENT.md` - Quick deployment reference
-  - `docs/security/SECURITY_SETUP.md` - Complete security guide with examples
-  - `docs/security/IP_WHITELIST_CONFIG.md` - IP-based access control
-  - `docs/security/SECURE_DEPLOYMENT_SUMMARY.md` - Quick status and next steps
-  - `scripts/README_DASHBOARD.md` - Detailed operations manual
-  - `scripts/tests/README.md` - Test suite documentation
-- **HTTPS Setup:**
-  - `scripts/nginx_dashboard.conf` - Nginx reverse proxy config
-  - `scripts/generate_ssl_cert.sh` - SSL certificate generation
-- **Real-time Monitoring (Integrated):**
-  - Access via admin dashboard at `http://localhost:8080/` → "📊 Monitor" tab
-  - `docs/REALTIME_MONITORING.md` - Complete monitoring guide
-  - `docs/MONITORING_QUICKREF.md` - Quick reference card
-  - `docs/summaries/REALTIME_MONITORING_SUMMARY.md` - Implementation details
 
 ## Examples
 - Determine expected scan type and status:
@@ -228,35 +171,6 @@ These project-specific guidelines help AI coding agents work productively in thi
 - Start system headless:
   ```bash
   bash scripts/start_attendance.sh --headless
-  ```
-- Start dashboard only (no camera):
-  ```bash
-  bash scripts/start_dashboard.sh
-  # Access: http://localhost:8080/health
-  ```
-- Test dashboard with authentication:
-  ```bash
-  API_KEY=$(grep DASHBOARD_API_KEY .env | cut -d= -f2)
-  curl -H "Authorization: Bearer $API_KEY" http://localhost:8080/status
-  ```
-- Setup HTTPS for dashboard:
-  ```bash
-  bash scripts/generate_ssl_cert.sh
-  sudo apt install nginx
-  sudo cp scripts/nginx_dashboard.conf /etc/nginx/sites-available/dashboard
-  sudo ln -s /etc/nginx/sites-available/dashboard /etc/nginx/sites-enabled/
-  sudo nginx -t && sudo systemctl reload nginx
-  ```
-- Start integrated dashboard with real-time monitoring:
-  ```bash
-  bash scripts/start_dashboard.sh
-  # Access: http://localhost:8080/ then click "📊 Monitor" tab
-  ```
-- Monitor metrics via API (requires authentication):
-  ```bash
-  API_KEY=$(grep DASHBOARD_API_KEY .env | cut -d= -f2)
-  curl -H "Authorization: Bearer $API_KEY" http://localhost:8080/api/realtime/metrics
-  curl -N -H "Authorization: Bearer $API_KEY" http://localhost:8080/api/realtime/stream  # Live SSE stream
   ```
 
 ## Detailed Thresholds & Queues

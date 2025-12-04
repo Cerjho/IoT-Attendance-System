@@ -50,11 +50,7 @@ else
         check_fail "URL_SIGNING_SECRET not set or using example value"
     fi
     
-    if grep -q "^DASHBOARD_API_KEY=" .env && ! grep -q "^DASHBOARD_API_KEY=your-" .env; then
-        check_pass "DASHBOARD_API_KEY configured"
-    else
-        check_fail "DASHBOARD_API_KEY not set or using example value"
-    fi
+    echo "ℹ️  DASHBOARD_API_KEY removed (dashboard now separate project)"
     
     if grep -q "^SUPABASE_URL=" .env && ! grep -q "^SUPABASE_URL=.*example" .env; then
         check_pass "SUPABASE_URL configured"
@@ -212,11 +208,7 @@ fi
 # 8. Services
 echo ""
 echo "8️⃣  Checking System Services..."
-if systemctl is-active --quiet attendance-dashboard 2>/dev/null || systemctl --user is-active --quiet attendance-dashboard 2>/dev/null; then
-    check_pass "Dashboard service running"
-else
-    check_warn "Dashboard service not running"
-fi
+echo "ℹ️  Dashboard service removed (now separate project)"
 
 # 9. Python Dependencies
 echo ""
@@ -250,24 +242,8 @@ fi
 # 10. API Endpoints
 echo ""
 echo "🔟 Checking API Endpoints..."
-if curl -s http://localhost:8080/health > /dev/null 2>&1; then
-    check_pass "Dashboard /health endpoint responding"
-    
-    # Test with API key
-    if [ -f .env ]; then
-        API_KEY=$(grep "^DASHBOARD_API_KEY=" .env | cut -d= -f2)
-        if [ -n "$API_KEY" ]; then
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $API_KEY" http://localhost:8080/status)
-            if [ "$STATUS" = "200" ]; then
-                check_pass "Dashboard authentication working"
-            else
-                check_warn "Dashboard authentication returned HTTP $STATUS"
-            fi
-        fi
-    fi
-else
-    check_warn "Dashboard not responding on localhost:8080"
-fi
+# Dashboard removed - skipping API health check
+echo "ℹ️  Dashboard health check removed (now separate project)"
 
 # 11. Test Suite
 echo ""

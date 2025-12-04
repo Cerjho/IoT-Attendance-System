@@ -22,14 +22,6 @@ This directory contains detailed summaries of major system improvements and impl
   - System verification results
   - Production deployment checklist
 
-### Real-time Monitoring
-- **REALTIME_MONITORING_SUMMARY.md** - Complete monitoring implementation
-  - Core monitoring engine (450 lines)
-  - Web dashboard with SSE (900 lines)
-  - Live metrics and alerts
-  - System integration points
-  - API endpoints documentation
-
 ## Usage
 
 These summaries provide:
@@ -41,7 +33,5 @@ These summaries provide:
 ## Related Documentation
 
 For operational documentation, see:
-- `../REALTIME_MONITORING.md` - Monitoring user guide
-- `../MONITORING_QUICKREF.md` - Quick reference
-- `../DASHBOARD_DEPLOYMENT.md` - Dashboard deployment
+- `../PRODUCTION_GUIDE.md` - Production deployment
 - `../security/` - Security documentation

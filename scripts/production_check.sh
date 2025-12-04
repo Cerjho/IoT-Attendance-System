@@ -51,11 +51,7 @@ else
         fail "URL_SIGNING_SECRET missing or too short"
     fi
     
-    if grep -q "^DASHBOARD_API_KEY=" .env && [ $(grep "^DASHBOARD_API_KEY=" .env | wc -c) -gt 40 ]; then
-        pass "DASHBOARD_API_KEY configured"
-    else
-        fail "DASHBOARD_API_KEY missing or too short"
-    fi
+    echo "\u2139\ufe0f  DASHBOARD_API_KEY removed (dashboard now separate project)"
 fi
 
 # 2. Configuration
@@ -103,36 +99,13 @@ fi
 # 4. Services
 echo ""
 echo "🖥️  System Services:"
-if systemctl is-active --quiet attendance-dashboard 2>/dev/null; then
-    pass "Dashboard service running"
-else
-    warn "Dashboard service not running (may need: sudo systemctl start attendance-dashboard)"
-fi
-
-if systemctl is-enabled --quiet attendance-dashboard 2>/dev/null; then
-    pass "Dashboard auto-start enabled"
-else
-    warn "Dashboard won't start on boot (may need: sudo systemctl enable attendance-dashboard)"
-fi
+echo "ℹ️  Dashboard service removed (now separate project)"
 
 # 5. API
 echo ""
 echo "🌐 API Endpoints:"
-if timeout 3 curl -s http://localhost:8080/health >/dev/null 2>&1; then
-    pass "Dashboard API responding"
-    
-    if [ -f .env ]; then
-        API_KEY=$(grep "^DASHBOARD_API_KEY=" .env | cut -d= -f2)
-        if [ -n "$API_KEY" ]; then
-            STATUS=$(timeout 3 curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $API_KEY" http://localhost:8080/status 2>/dev/null || echo "000")
-            if [ "$STATUS" = "200" ]; then
-                pass "Dashboard authentication working"
-            else
-                warn "Dashboard auth test failed (HTTP $STATUS)"
-            fi
-        fi
-    fi
-else
+echo "ℹ️  Dashboard API removed (now separate project)"
+if false; then
     warn "Dashboard API not responding (service may not be running)"
 fi
 

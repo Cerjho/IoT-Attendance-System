@@ -76,18 +76,8 @@ else
 fi
 
 echo -e "\n${YELLOW}5. Setting up automatic service restart on failure...${NC}"
-sudo systemctl edit --full attendance-dashboard.service || true
-# Add Restart options if not present
-if ! systemctl cat attendance-dashboard.service | grep -q "Restart="; then
-    sudo mkdir -p /etc/systemd/system/attendance-dashboard.service.d/
-    sudo tee /etc/systemd/system/attendance-dashboard.service.d/restart.conf > /dev/null <<EOF
-[Service]
-Restart=always
-RestartSec=10
-StartLimitInterval=200
-StartLimitBurst=5
-EOF
-    sudo systemctl daemon-reload
+echo -e "${GREEN}ℹ️  Dashboard service removed (now separate project)${NC}"
+# Note: Configure attendance-system.service restart policy if needed
     echo -e "${GREEN}✅ Auto-restart configured${NC}"
 else
     echo -e "${GREEN}✅ Auto-restart already configured${NC}"
@@ -121,17 +111,8 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
 }
 
-# Check dashboard service
-if ! systemctl is-active --quiet attendance-dashboard.service; then
-    log "ERROR: Dashboard service is down, attempting restart..."
-    sudo systemctl restart attendance-dashboard.service
-    sleep 5
-    if systemctl is-active --quiet attendance-dashboard.service; then
-        log "SUCCESS: Dashboard service restarted"
-    else
-        log "CRITICAL: Failed to restart dashboard service"
-    fi
-fi
+# Dashboard service removed - now separate project
+log "INFO: Dashboard service monitoring disabled (moved to separate project)"
 
 # Check Nginx
 if ! systemctl is-active --quiet nginx; then
@@ -191,7 +172,7 @@ else
 fi
 
 # Test API with auth
-API_KEY=$(grep DASHBOARD_API_KEY "$PROJECT_DIR/.env" 2>/dev/null | cut -d= -f2)
+# DASHBOARD_API_KEY removed - dashboard is now separate project
 if [ -n "$API_KEY" ]; then
     if curl -k -s -f -H "Authorization: Bearer $API_KEY" https://localhost/devices > /dev/null 2>&1; then
         echo -e "${GREEN}✅ API authentication working${NC}"
@@ -226,19 +207,17 @@ echo "Security:"
 echo "  ✅ HTTPS enabled with TLS 1.2/1.3"
 echo "  ✅ Rate limiting active (10 req/s)"
 echo "  ✅ IP whitelist configured"
-echo "  ✅ Security headers enabled"
-echo "  ✅ Auto-restart on failure"
-echo "  ✅ Health monitoring (every 5 min)"
+echo "  \u2705 Database optimizations applied"
+echo "  \u2705 System limits configured"
+echo ""
+echo "\u2139\ufe0f  Note: Dashboard features removed (now separate project)"
 echo ""
 echo "Logs:"
-echo "  Dashboard: journalctl -u attendance-dashboard.service -f"
-echo "  Nginx:     tail -f /var/log/nginx/dashboard_*.log"
-echo "  Health:    tail -f $PROJECT_DIR/data/logs/health_monitor.log"
+echo "  System:    journalctl -u attendance-system.service -f"
+echo "  App logs:  tail -f $PROJECT_DIR/data/logs/attendance_system.log"
 echo ""
 echo "Next Steps:"
-echo "  1. Test dashboard at: https://$(hostname -I | awk '{print $1}')"
+echo "  1. Start system: sudo systemctl start attendance-system"
 echo "  2. Monitor logs for any issues"
-echo "  3. Consider Let's Encrypt for trusted certificate"
-echo "     sudo apt install certbot python3-certbot-nginx"
-echo "     sudo certbot --nginx -d your-domain.com"
+echo "  3. Test QR code scanning"
 echo ""

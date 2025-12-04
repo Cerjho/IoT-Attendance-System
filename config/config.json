@@ -131,18 +131,6 @@
     "enabled": true,
     "export_format": "prometheus"
   },
-  "admin_dashboard": {
-    "enabled": true,
-    "host": "0.0.0.0",
-    "port": 8080,
-    "auth_enabled": true,
-    "multi_device_enabled": false,
-    "allowed_ips": [
-      "127.0.0.1",
-      "192.168.1.0/24",
-      "100.64.0.0/10"
-    ]
-  },
   "device_id": "${DEVICE_ID}",
   "device_name": "IT Lab - Main Device",
   "location": {

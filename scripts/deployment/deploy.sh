@@ -163,34 +163,8 @@ KillSignal=SIGTERM
 WantedBy=multi-user.target
 EOF
 
-# Step 11: Configure Nginx Reverse Proxy (for Admin Dashboard)
-echo "🌐 Step 11: Configuring Nginx reverse proxy..."
-sudo tee /etc/nginx/sites-available/attendance-dashboard > /dev/null << EOF
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-
-    location /health {
-        proxy_pass http://127.0.0.1:8080/health;
-        access_log off;
-    }
-}
-EOF
-
-sudo ln -sf /etc/nginx/sites-available/attendance-dashboard /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+# Step 11: Nginx configuration removed (dashboard is separate project)
+echo "ℹ️  Step 11: Nginx reverse proxy skipped (dashboard removed)"
 
 # Step 12: Enable Services
 echo "🚀 Step 12: Enabling and starting services..."
@@ -206,7 +180,7 @@ cat > "$INSTALL_DIR/scripts/healthcheck.sh" << 'EOF'
 #!/bin/bash
 # Health check for monitoring systems
 
-HEALTH_URL="http://localhost:8080/health"
+# Dashboard health check removed (dashboard is now separate project)
 RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
 
 if [ "$RESPONSE" -eq 200 ]; then
@@ -308,8 +282,7 @@ EOF
 if command -v ufw &> /dev/null; then
     echo "🔥 Step 16: Configuring firewall..."
     sudo ufw allow 22/tcp    # SSH
-    sudo ufw allow 80/tcp    # HTTP (Dashboard)
-    sudo ufw allow 8080/tcp  # Admin Dashboard (optional, for direct access)
+    # Dashboard ports removed (dashboard is now separate project)
     echo "Firewall rules added. Enable with: sudo ufw enable"
 fi
 
@@ -343,15 +316,9 @@ echo "   sudo systemctl status attendance-system"
 echo ""
 echo "6. View logs:"
 echo "   sudo journalctl -u attendance-system -f"
+echo "   tail -f data/logs/attendance_system.log"
 echo ""
-echo "7. Access admin dashboard:"
-echo "   http://$(hostname -I | awk '{print $1}')"
-echo "   or http://localhost (if local)"
-echo ""
-echo "📊 Monitoring Endpoints:"
-echo "   Health: http://localhost:8080/health"
-echo "   Status: http://localhost:8080/status"
-echo "   Metrics: http://localhost:8080/metrics/prometheus"
+echo "ℹ️  Note: Admin dashboard removed (now separate project)"
 echo ""
 
 if [ -n "$REBOOT_REQUIRED" ]; then

@@ -34,7 +34,6 @@ src/
 ├── database/                      # Local database
 │   ├── __init__.py
 │   ├── db_handler.py              # SQLite operations
-│   ├── device_registry.py         # Device management
 │   └── sync_queue.py              # Offline queue + archive
 ├── hardware/                      # GPIO hardware
 │   ├── __init__.py
@@ -56,17 +55,15 @@ src/
 │   └── roster_sync.py             # Daily roster updates
 └── utils/                         # Utilities
     ├── __init__.py
-    ├── admin_dashboard.py         # Admin HTTP dashboard
     ├── circuit_breaker.py         # Circuit breaker pattern
     ├── config_loader.py           # Configuration loading
     ├── db_transactions.py         # Transaction safety
     ├── disk_monitor.py            # Disk space monitoring
     ├── file_locks.py              # File locking
     ├── logger_config.py           # Logging setup
-    ├── multi_device_manager.py    # Multi-device coordination
     ├── network_timeouts.py        # Network timeout configs
     ├── queue_validator.py         # Queue data validation
-    ├── realtime_monitor.py        # Real-time monitoring engine
+    ├── shutdown_handler.py        # Graceful shutdown
     └── structured_logging.py      # Structured log output
 ```
 
@@ -79,37 +76,25 @@ scripts/
 ├── force_sync.py                  # Force cloud sync
 ├── generate_ssl_cert.sh           # SSL certificate generation
 ├── health_check.sh                # Health monitoring
-├── health_monitor.sh              # Continuous monitoring
 ├── hw_check.py                    # Hardware validation
 ├── migrate_add_uuid.py            # Database migration
 ├── monitor.py                     # System monitor
-├── nginx_dashboard.conf           # Nginx configuration
 ├── production_check.sh            # Production validation
 ├── production_health_check.sh     # Production health
 ├── production_optimization.sh     # Production optimization
 ├── quick_check.sh                 # Quick system check
-├── realtime_dashboard.py          # Real-time monitoring dashboard
 ├── setup.sh                       # Initial setup
 ├── start_attendance.sh            # Main startup script
-├── start_dashboard_only.py        # Dashboard-only mode
-├── start_dashboard.sh             # Admin dashboard startup
-├── start_monitor.sh               # Monitoring dashboard startup
 ├── status.py                      # System status
 ├── validate_deployment.sh         # Deployment validation
 ├── README.md                      # Scripts documentation
-├── README_DASHBOARD.md            # Dashboard operations
-├── deployment/                    # Deployment scripts
-└── tests/                         # Script tests
-    ├── test_endpoints.sh          # API endpoint tests
-    ├── test_ip_whitelist.sh       # IP whitelist tests
-    └── test_security.sh           # Security tests
+└── deployment/                    # Deployment scripts
 ```
 
 ## Tests (`tests/`)
 ```
 tests/
 ├── conftest.py                    # Pytest fixtures
-├── test_admin_dashboard.py        # Dashboard tests
 ├── test_alerts.py                 # Alert system tests
 ├── test_all_sms_templates.py      # SMS template tests
 ├── test_attendance_page.py        # Attendance page tests
@@ -136,18 +121,11 @@ docs/
 ├── ADMIN_CONFIG_MANAGEMENT.md     # Config management
 ├── API_INTEGRATION_GUIDE.md       # API integration
 ├── CONFIG_MANAGEMENT_QUICKREF.md  # Config quick ref
-├── DASHBOARD_DEPLOYMENT.md        # Dashboard deployment
-├── DASHBOARD_TEST_GUIDE.md        # Dashboard testing
 ├── DEPLOYMENT.md                  # General deployment
 ├── HARDWARE_REFERENCE.md          # Hardware specs
-├── MONITORING_QUICKREF.md         # Monitoring quick ref
-├── MULTI_DEVICE_MANAGEMENT.md     # Multi-device setup
-├── MULTI_DEVICE_QUICKSTART.md     # Multi-device quickstart
-├── PRODUCTION_DASHBOARD.md        # Production dashboard
 ├── PRODUCTION_GUIDE.md            # Production guide
 ├── QUICK_REFERENCE.md             # General quick ref
 ├── QUICKSTART.md                  # Getting started
-├── REALTIME_MONITORING.md         # Real-time monitoring guide
 ├── view-attendance.html           # Attendance viewer
 ├── security/                      # Security documentation
 │   ├── IP_WHITELIST_CONFIG.md
@@ -156,8 +134,7 @@ docs/
 ├── summaries/                     # Implementation summaries
 │   ├── CRASH_FIXES_APPLIED.md
 │   ├── DEPLOYMENT_CRASH_RISKS.md
-│   ├── DEPLOYMENT_READY.md
-│   └── REALTIME_MONITORING_SUMMARY.md
+│   └── DEPLOYMENT_READY.md
 ├── technical/                     # Technical documentation
 │   ├── AUTO_CAPTURE.md
 │   └── SYSTEM_OVERVIEW.md
@@ -198,7 +175,6 @@ supabase/
 ```
 public/
 ├── README.md                      # Public files documentation
-├── multi-device-dashboard.html    # Multi-device dashboard
 └── view-attendance.html           # Public attendance viewer
 ```
 
@@ -208,7 +184,6 @@ utils/
 ├── check_status.py                # Status checker
 └── test-scripts/                  # Test utilities
     ├── test_face_quality.py
-    ├── test_realtime_monitor.py
     └── test_roster_sync.py
 ```
 
@@ -225,8 +200,6 @@ backups/
 ### Entry Points
 - `attendance_system.py` - Main application
 - `scripts/start_attendance.sh` - Production startup
-- `scripts/start_dashboard.sh` - Admin dashboard
-- `scripts/start_monitor.sh` - Real-time monitoring
 
 ### Configuration
 - `config/config.json` - Main configuration
@@ -237,7 +210,6 @@ backups/
 ### Documentation
 - `README.md` - Project overview
 - `docs/QUICKSTART.md` - Getting started
-- `docs/REALTIME_MONITORING.md` - Monitoring guide
 - `.github/copilot-instructions.md` - AI assistant guidelines
 
 ## Directory Purpose

@@ -19,7 +19,7 @@ fail() { echo "❌ $1"; ((FAILED++)); }
 echo -e "\n1. Environment Secrets:"
 [ -f .env ] && pass ".env exists" || fail ".env missing"
 grep -q "^URL_SIGNING_SECRET=" .env 2>/dev/null && pass "URL_SIGNING_SECRET set" || fail "URL_SIGNING_SECRET missing"
-grep -q "^DASHBOARD_API_KEY=" .env 2>/dev/null && pass "DASHBOARD_API_KEY set" || fail "DASHBOARD_API_KEY missing"
+echo "\u2139\ufe0f  DASHBOARD_API_KEY removed (dashboard now separate project)"
 
 # 2. Config security
 echo -e "\n2. Configuration Security:"
@@ -33,11 +33,7 @@ git check-ignore .env >/dev/null 2>&1 && pass ".env ignored by Git" || fail ".en
 
 # 4. Services
 echo -e "\n4. Services:"
-systemctl is-active --quiet attendance-dashboard 2>/dev/null && pass "Dashboard running" || echo "⚠️  Dashboard service not running"
-
-# 5. API
-echo -e "\n5. API Endpoints:"
-curl -s http://localhost:8080/health >/dev/null 2>&1 && pass "Dashboard API responding" || echo "⚠️  Dashboard API not responding"
+echo "ℹ️  Dashboard service removed (now separate project)"
 
 # 6. Tests
 echo -e "\n6. Tests:"
