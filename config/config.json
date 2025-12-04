@@ -209,7 +209,7 @@
     "gpio_pins": {
       "red": 26,
       "green": 6,
-      "blue": 5
+      "blue": 24
     },
     "colors": {
       "qr_detected": [
@@ -219,7 +219,7 @@
       ],
       "face_detected": [
         255,
-        165,
+        80,
         0
       ],
       "success": [
@@ -234,22 +234,22 @@
       ],
       "duplicate": [
         255,
-        255,
+        150,
         0
       ],
       "late": [
         255,
-        165,
+        80,
         0
       ],
       "processing": [
-        255,
+        200,
         0,
         255
       ]
     },
-    "brightness": 100,
-    "use_full_brightness": true,
+    "brightness": 30,
+    "use_full_brightness": false,
     "fade_duration_ms": 500,
     "hold_duration_ms": 2000
   },
