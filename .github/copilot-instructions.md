@@ -53,8 +53,7 @@ These project-specific guidelines help AI coding agents work productively in thi
   - Roster: `python utils/test-scripts/test_roster_sync.py`
   - Face quality: `python utils/test-scripts/test_face_quality.py`
   - System status: `python scripts/status.py` or `utils/check_status.py`
-  - Dashboard health: `bash scripts/health_check.sh` (auto-restart on failure)
- - **Force cloud sync:** Use `CloudSyncManager.force_sync_all()` via scripts or REPL when online.
+- **Force cloud sync:** Use `CloudSyncManager.force_sync_all()` via scripts or REPL when online.
 
 ## Testing
 - **Unit/Integration:** Use `pytest -q` (configured in `pytest.ini`).
