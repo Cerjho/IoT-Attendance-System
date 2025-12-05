@@ -69,20 +69,20 @@ ON CONFLICT (employee_number) DO NOTHING;
 -- Create teaching loads
 DO $$
 DECLARE
-    stem_a_section_id UUID;
-    teacher_id UUID;
-    math_subject_id UUID;
+    v_stem_a_section_id UUID;
+    v_teacher_id UUID;
+    v_math_subject_id UUID;
 BEGIN
     -- Get section and teacher IDs
-    SELECT id INTO stem_a_section_id FROM sections WHERE section_code = 'STEM-A-11' LIMIT 1;
-    SELECT id INTO teacher_id FROM teachers WHERE employee_number = 'T001' LIMIT 1;
+    SELECT id INTO v_stem_a_section_id FROM sections WHERE section_code = 'STEM-A-11' LIMIT 1;
+    SELECT id INTO v_teacher_id FROM teachers WHERE employee_number = 'T001' LIMIT 1;
     
     -- Create or get Math subject
     INSERT INTO subjects (code, name, grade_level, status)
     VALUES ('MATH11', 'Mathematics 11', '11', 'active')
     ON CONFLICT (code) DO NOTHING;
     
-    SELECT id INTO math_subject_id FROM subjects WHERE code = 'MATH11' LIMIT 1;
+    SELECT id INTO v_math_subject_id FROM subjects WHERE code = 'MATH11' LIMIT 1;
     
     -- Create teaching load
     INSERT INTO teaching_loads (
@@ -92,9 +92,9 @@ BEGIN
         school_year,
         status
     ) VALUES (
-        teacher_id,
-        math_subject_id,
-        stem_a_section_id,
+        v_teacher_id,
+        v_math_subject_id,
+        v_stem_a_section_id,
         '2024-2025',
         'active'
     )
