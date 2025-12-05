@@ -263,11 +263,13 @@ class IoTAttendanceSystem:
 
             # Prepare optional picamera controls from config
             picam_controls = self.config.get("camera.picamera", {})
+            force_opencv = self.config.get("camera.force_opencv", False)
             self.camera = CameraHandler(
                 camera_index=camera_index,
                 resolution=(width, height),
                 controls=picam_controls,
                 still_settle_ms=self.still_settle_ms,
+                force_opencv=force_opencv,
             )
 
             if not self.camera.start():

@@ -37,6 +37,7 @@ class CameraHandler:
         max_init_retries: int = 3,
         init_retry_delay: int = 5,
         health_check_interval: int = 30,
+        force_opencv: bool = False,
     ):
         """
         Initialize camera handler.
@@ -47,6 +48,7 @@ class CameraHandler:
             max_init_retries: Max attempts to initialize camera
             init_retry_delay: Seconds between init retries
             health_check_interval: Seconds between health checks
+            force_opencv: Force use of OpenCV instead of Picamera2 (for USB webcams)
         """
         self.camera_index = camera_index
         self.resolution = resolution
@@ -55,7 +57,7 @@ class CameraHandler:
         self.is_open = False
         self.frame_count = 0
         self.last_frame_time = None
-        self.use_picamera2 = PICAMERA2_AVAILABLE
+        self.use_picamera2 = PICAMERA2_AVAILABLE and not force_opencv
         self.controls = controls or {}
         self.full_still_size: Optional[Tuple[int, int]] = None
         self.still_settle_ms = still_settle_ms

@@ -6,6 +6,7 @@
       "height": "480"
     },
     "fps": 30,
+    "force_opencv": true,
     "picamera": {
       "exposure": {
         "mode": "auto",
@@ -23,15 +24,15 @@
     "extra_top": 30,
     "preview_draw_crop_box": true,
     "jpeg_quality": 95,
-    "use_high_res_still": true,
+    "use_high_res_still": false,
     "still_resolution": {
-      "width": 1640,
-      "height": 1232
+      "width": 640,
+      "height": 480
     },
-    "still_settle_ms": 700
+    "still_settle_ms": 100
   },
   "image_processing": {
-    "prefer_isp_color": true,
+    "prefer_isp_color": false,
     "denoise_enabled": true,
     "denoise_h": 10,
     "denoise_hColor": 10,
@@ -243,7 +244,7 @@
     "hold_duration_ms": 2000
   },
   "power_button": {
-    "enabled": true,
+    "enabled": false,
     "gpio_pin": 17,
     "wake_gpio_pin": 3,
     "short_press_seconds": 3,
