@@ -15,7 +15,7 @@ class QueueDataValidator:
     # Schema for attendance records in queue
     ATTENDANCE_SCHEMA = {
         "required": ["status"],  # student_number OR student_id required, date OR timestamp required (checked separately)
-        "optional": ["student_number", "student_id", "date", "time_in", "time_out", "photo_path", "device_id", "qr_data", "remarks", "timestamp", "scan_type", "id"],
+        "optional": ["student_number", "student_id", "date", "time_in", "time_out", "photo_path", "photo_url", "device_id", "qr_data", "remarks", "timestamp", "scan_type", "id", "section_id", "subject_id", "teaching_load_id", "recorded_by"],
         "types": {
             "student_number": (str, type(None)),
             "student_id": (str, type(None)),
@@ -26,10 +26,15 @@ class QueueDataValidator:
             "status": str,
             "scan_type": (str, type(None)),
             "photo_path": (str, type(None)),
+            "photo_url": (str, type(None)),
             "device_id": (str, type(None)),
             "qr_data": (str, type(None)),
             "remarks": (str, type(None)),
             "id": (int, type(None)),
+            "section_id": (str, type(None)),
+            "subject_id": (str, type(None)),
+            "teaching_load_id": (str, type(None)),
+            "recorded_by": (str, type(None)),
         },
         "status_values": ["present", "late", "absent", "excused"],
     }
@@ -91,6 +96,20 @@ class QueueDataValidator:
                 time_val = data_dict.get(time_field)
                 if time_val and not QueueDataValidator._is_valid_time(time_val):
                     return False, f"Invalid time format for {time_field} (expected HH:MM:SS): {time_val}"
+            
+            # Validate UUID format for UUID fields (but skip student_id as it can be student_number)
+            # Note: Local queue uses student_id field to store student_number (not UUID)
+            # The cloud sync converts student_number to UUID during sync
+            uuid_fields = ["section_id", "subject_id", "teaching_load_id", "recorded_by"]
+            for uuid_field in uuid_fields:
+                uuid_val = data_dict.get(uuid_field)
+                if uuid_val and not QueueDataValidator._is_valid_uuid(uuid_val):
+                    return False, f"Invalid UUID format for {uuid_field}: {uuid_val}"
+            
+            # Validate device_id format (alphanumeric + hyphens/underscores)
+            device_id = data_dict.get("device_id")
+            if device_id and not QueueDataValidator._is_valid_device_id(device_id):
+                return False, f"Invalid device_id format (alphanumeric + hyphens/underscores only): {device_id}"
 
             return True, None
 
@@ -110,6 +129,23 @@ class QueueDataValidator:
             return 0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59
         except ValueError:
             return False
+    
+    @staticmethod
+    def _is_valid_uuid(uuid_str: str) -> bool:
+        """Check if string is valid UUID format (8-4-4-4-12 hex digits)"""
+        if not isinstance(uuid_str, str):
+            return False
+        import re
+        uuid_pattern = r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        return bool(re.match(uuid_pattern, uuid_str))
+    
+    @staticmethod
+    def _is_valid_device_id(device_id: str) -> bool:
+        """Check if device_id contains only alphanumeric characters, hyphens, and underscores"""
+        if not isinstance(device_id, str) or len(device_id) == 0:
+            return False
+        import re
+        return bool(re.match(r'^[a-zA-Z0-9_-]+$', device_id))
 
     @staticmethod
     def sanitize_attendance(data: Dict) -> Dict:

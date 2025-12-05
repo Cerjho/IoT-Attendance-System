@@ -177,6 +177,8 @@ class RosterSyncManager:
             }
 
             # Fetch active students with all needed fields (including id for UUID)
+            # Note: Only fetch fields needed for local validation and display
+            # Context fields (section_id, subject_id, teaching_load_id) are determined by backend
             params = {
                 "select": "id,student_number,first_name,middle_name,last_name,email,parent_guardian_contact,grade_level,section,status",
                 "status": "eq.active",  # Only active students
@@ -261,6 +263,20 @@ class RosterSyncManager:
                 full_name = " ".join([part for part in name_parts if part]).strip()
 
                 # Store in local cache with UUID (using student_id field for compatibility)
+                # First ensure columns exist
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS students (
+                        student_id TEXT PRIMARY KEY,
+                        uuid TEXT,
+                        name TEXT,
+                        email TEXT,
+                        parent_phone TEXT,
+                        created_at TEXT
+                    )
+                    """
+                )
+                
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO students (student_id, uuid, name, email, parent_phone, created_at)
@@ -343,7 +359,7 @@ class RosterSyncManager:
 
             cursor.execute(
                 """
-                SELECT student_id, name, email, parent_phone, created_at
+                SELECT student_id, uuid, name, email, parent_phone, created_at
                 FROM students 
                 WHERE student_id = ?
             """,

@@ -90,6 +90,7 @@
     "circuit_breaker_threshold": 5,
     "circuit_breaker_timeout": 60,
     "circuit_breaker_success": 2,
+    "recorded_by_teacher_uuid": null,
     "roster_sync": {
       "auto_sync_on_boot": true,
       "sync_time": "06:00",

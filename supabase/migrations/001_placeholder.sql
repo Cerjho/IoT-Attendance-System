@@ -1,0 +1,1 @@
+-- Migration 001 (historical, already applied)

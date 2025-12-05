@@ -128,7 +128,8 @@ These project-specific guidelines help AI coding agents work productively in thi
   - **Structured logging (`src/utils/structured_logging.py`):** Set correlation IDs with `set_correlation_id()` at operation boundaries; use `StructuredLogger` for rich context; JSON logs for monitoring.
 - **Supabase REST details:**
   - Attendance insert: `POST {url}/rest/v1/attendance` with headers `apikey`, `Authorization: Bearer <key>`, `Prefer: return=representation`.
-  - Payload fields: `student_id` (UUID), `date` (ISO date), `time_in` or `time_out` (ISO time), `status`, `device_id`, `remarks`.
+  - Payload fields: `student_id` (UUID), `date` (ISO date), `time_in` or `time_out` (ISO time), `status`, `device_id`, `photo_url`, `remarks`.
+  - Backend enrichment: Database trigger (`enrich_attendance_on_insert`) automatically adds `section_id`, `subject_id`, `teaching_load_id` based on device location from `iot_devices` table.
   - Student lookup: `GET {url}/rest/v1/students?student_number=eq.<num>&select=id` to resolve `student_id`.
   - Storage upload: `POST {url}/storage/v1/object/<bucket>/<path>` with image bytes; public URL at `.../object/public/<bucket>/<path>`.
 - **Notifications:** SMS sending flows live in `src/notifications/`; ensure idempotency with scan cooldown rules in `ScheduleManager`.
@@ -199,9 +200,11 @@ These project-specific guidelines help AI coding agents work productively in thi
     "time_in": "07:12:34",
     "status": "present",
     "device_id": "pi-lab-01",
-    "remarks": "QR: 2021001 | Photo: https://.../object/public/attendance-photos/2021001/20251129_071234_img.jpg"
+    "photo_url": "https://.../object/public/attendance-photos/2021001/20251129_071234_img.jpg",
+    "remarks": "QR: 2021001"
   }
   ```
+  **Note:** Backend trigger (`20251205150001_attendance_enrichment_trigger.sql`) automatically populates `section_id`, `subject_id`, `teaching_load_id` based on device location and schedule.
 - **Student lookup (REST `GET /rest/v1/students`):**
   ```http
   GET {url}/rest/v1/students?student_number=eq.2021001&select=id

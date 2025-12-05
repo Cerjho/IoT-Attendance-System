@@ -251,17 +251,30 @@ class CloudSyncManager:
 
             student_uuid = students[0]["id"]
 
-            # Step 2: Prepare attendance data for new schema
+            # Step 2: Prepare attendance data for Supabase
+            # Note: IoT device only sends core data. Backend/triggers determine:
+            # - section_id (from iot_devices.section_id via device_id)
+            # - subject_id and teaching_load_id (from schedule + time + section)
             attendance_url = f"{self.supabase_url}/rest/v1/attendance"
             attendance_data = {
                 "student_id": student_uuid,  # UUID from students table
                 "date": cloud_data.get("date"),  # DATE field
                 "status": cloud_data.get("status", "present"),
-                "device_id": self.device_id,
-                "remarks": cloud_data.get(
-                    "remarks", f"QR: {cloud_data.get('qr_data', 'N/A')}"
-                ),
+                "device_id": self.device_id,  # Backend looks up section_id from iot_devices
+                "remarks": f"QR: {cloud_data.get('qr_data', 'N/A')}",
             }
+            
+            # Add photo_url as separate field (not just in remarks)
+            photo_url = cloud_data.get("photo_url")
+            if photo_url:
+                attendance_data["photo_url"] = photo_url
+                logger.debug(f"Photo URL added to attendance: {photo_url}")
+            
+            # Add recorded_by if device operator is configured
+            recorded_by = self.config.get("recorded_by_teacher_uuid")
+            if recorded_by:
+                attendance_data["recorded_by"] = recorded_by
+                logger.debug(f"Recorded by teacher UUID: {recorded_by}")
 
             # Add time_in or time_out based on scan type
             if cloud_data.get("time_in"):
@@ -269,7 +282,7 @@ class CloudSyncManager:
             if cloud_data.get("time_out"):
                 attendance_data["time_out"] = cloud_data.get("time_out")
 
-            # Step 3: Insert attendance record with circuit breaker
+            # Step 4: Insert attendance record with circuit breaker
             try:
                 response = self.circuit_breaker_attendance.call(
                     requests.post, attendance_url, headers=headers, json=attendance_data, timeout=self.timeouts.get_supabase_timeout()
@@ -363,6 +376,7 @@ class CloudSyncManager:
                 "date": dt.date().isoformat(),
                 "status": attendance_data.get("status", "present"),
                 "qr_data": attendance_data.get("qr_data"),
+                "photo_url": photo_url,  # Pass photo_url separately
                 "remarks": f"Photo: {photo_url}" if photo_url else None,
             }
 
@@ -488,6 +502,7 @@ class CloudSyncManager:
                         "date": dt.date().isoformat(),
                         "status": attendance_data.get("status", "present"),
                         "qr_data": attendance_data.get("qr_data"),
+                        "photo_url": photo_url,  # Pass photo_url separately
                         "remarks": f"Photo: {photo_url}" if photo_url else None,
                     }
 

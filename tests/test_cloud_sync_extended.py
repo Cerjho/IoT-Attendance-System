@@ -134,9 +134,12 @@ def test_photo_upload_remarks_included(monkeypatch, tmp_path):
 
     result = cloud.process_sync_queue(batch_size=10)
     assert result["succeeded"] == 1
-    # Remarks should include photo public URL
+    # Photo URL should be in separate photo_url field (not just remarks)
+    assert "photo_url" in captured_attendance_payload
+    assert "attendance-photos/2021002" in captured_attendance_payload["photo_url"]
+    # Remarks should contain QR data
     assert "remarks" in captured_attendance_payload
-    assert "attendance-photos/2021002" in captured_attendance_payload["remarks"]
+    assert "QR: 2021002" in captured_attendance_payload["remarks"]
 
 
 @pytest.mark.integration

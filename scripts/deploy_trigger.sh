@@ -1,0 +1,42 @@
+#!/bin/bash
+# Deploy attendance enrichment trigger to Supabase
+
+echo "=========================================="
+echo "Deploy Attendance Enrichment Trigger"
+echo "=========================================="
+echo ""
+echo "📋 This trigger automatically enriches attendance records with:"
+echo "   - section_id (from iot_devices table)"
+echo "   - subject_id (from teaching_loads table)"
+echo "   - teaching_load_id (from teaching_loads table)"
+echo ""
+echo "🚀 Deployment Options:"
+echo ""
+echo "Option 1: Supabase SQL Editor (Recommended)"
+echo "==========================================="
+echo "1. Open: https://ddblgwzylvwuucnpmtzi.supabase.co/project/_/sql"
+echo "2. Click 'New Query'"
+echo "3. Copy the SQL from: supabase/sql/attendance_enrichment_trigger.sql"
+echo "4. Paste and click 'Run'"
+echo ""
+echo "Option 2: Direct Database Connection"
+echo "====================================="
+echo "If you have DATABASE_URL in .env:"
+echo "  psql \$DATABASE_URL -f supabase/sql/attendance_enrichment_trigger.sql"
+echo ""
+echo "Option 3: Supabase CLI (Migration)"
+echo "==================================="
+echo "  supabase db push --db-url \$DATABASE_URL"
+echo ""
+echo "✅ After deployment, verify with:"
+echo "  SELECT trigger_name FROM information_schema.triggers"
+echo "  WHERE trigger_name = 'enrich_attendance_on_insert';"
+echo ""
+echo "📄 SQL file location:"
+echo "  $(pwd)/supabase/sql/attendance_enrichment_trigger.sql"
+echo ""
+echo "Would you like to view the SQL? (y/n)"
+read -r response
+if [[ "$response" =~ ^[Yy]$ ]]; then
+    cat supabase/sql/attendance_enrichment_trigger.sql
+fi
