@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Enable Raspberry Pi power button on GPIO 3 (pin 5) for shutdown + power-on
-# - Adds dtoverlay=gpio-shutdown with proper parameters
+# Enable Raspberry Pi power button - Standard configuration
+# - GPIO 3 (pin 5): Wake-from-halt only (gpio-poweroff overlay)
+# - GPIO 17 (pin 11): Shutdown control via app
+# - Both GPIOs connected to same button
 # - Works on Raspberry Pi OS Bullseye/Bookworm (handles /boot and /boot/firmware)
 # - Idempotent: safe to run multiple times
 
-REQUIRED_OVERLAY="dtoverlay=gpio-shutdown,gpio_pin=3,active_low=1,gpio_pull=up"
+REQUIRED_OVERLAY="dtoverlay=gpio-poweroff,gpiopin=3,active_low=1"
 
 # Detect config.txt path
 CFG=""
@@ -34,13 +36,18 @@ echo "Backed up ${CFG} -> ${BACKUP}"
 if grep -q "^${REQUIRED_OVERLAY}$" "$CFG"; then
   echo "Overlay already present: ${REQUIRED_OVERLAY}"
 else
-  # If another gpio-shutdown line exists, comment it out for clarity
+  # If old gpio-shutdown line exists, comment it out
   if grep -q '^dtoverlay=gpio-shutdown' "$CFG"; then
-    echo "Found existing gpio-shutdown overlay. Commenting it out to avoid conflict..."
+    echo "Found existing gpio-shutdown overlay. Commenting it out..."
     sed -i 's/^dtoverlay=gpio-shutdown/# & (disabled by enable_power_button.sh)/' "$CFG"
   fi
+  # If old gpio-poweroff line exists, comment it out
+  if grep -q '^dtoverlay=gpio-poweroff' "$CFG"; then
+    echo "Found existing gpio-poweroff overlay. Commenting it out..."
+    sed -i 's/^dtoverlay=gpio-poweroff/# & (disabled by enable_power_button.sh)/' "$CFG"
+  fi
   echo "Adding overlay: ${REQUIRED_OVERLAY}"
-  printf "\n# Enable power button on GPIO3 (pin 5) for shutdown + wake\n%s\n" "$REQUIRED_OVERLAY" >> "$CFG"
+  printf "\n# Power button: GPIO 3 (pin 5) wake-only, GPIO 17 (pin 11) shutdown via app\n%s\n" "$REQUIRED_OVERLAY" >> "$CFG"
 fi
 
 # Show summary
@@ -51,15 +58,18 @@ tail -n 6 "$CFG"
 echo
 cat <<'EOF'
 Next steps:
-1) Wire a momentary push button between GPIO 3 (pin 5) and GND (pin 6).
+1) Wire a momentary push button:
+   - Button Pin 1 → GPIO 17 (pin 11) + GPIO 3 (pin 5) [bridge both]
+   - Button Pin 2 → GND (any ground pin)
 2) Reboot to apply overlay:
    sudo reboot
 
 Usage after reboot:
-- Short press: triggers safe OS shutdown.
-- While halted: press button to power the Pi back on (GPIO3 is wake-capable).
+- While running: Short press = safe shutdown, Long press = force (via GPIO 17)
+- While halted: Press to wake Pi (GPIO 3 wake capability)
 
-Note:
-- Our app also monitors the button for safe shutdown, but the kernel overlay
-  handles shutdown/wake even if the app isn't running.
+Standard GPIO Setup:
+- GPIO 3: Wake-from-halt only (gpio-poweroff overlay)
+- GPIO 17: Shutdown control via app (short/long press detection)
+- Both GPIOs connected to same button
 EOF

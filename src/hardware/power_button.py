@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Power Button Controller
-Handles safe shutdown and power on for Raspberry Pi
-GPIO 3 (Pin 5) → Button → GND (Pin 6)
+Handles safe shutdown, reboot, and wake for Raspberry Pi
+GPIO 17 (Pin 11) + GPIO 3 (Pin 5) → Button → GND
+GPIO 17: Monitored by app for shutdown (safe/force)
+GPIO 3: Wake-from-halt only (gpio-poweroff overlay)
 """
 
 import logging
@@ -15,12 +17,14 @@ logger = logging.getLogger(__name__)
 
 class PowerButtonController:
     """
-    Controls power button for safe shutdown
+    Controls power button for safe shutdown, reboot, and wake
 
     Features:
     - Short press (< 3s): Safe shutdown
     - Long press (> 5s): Force shutdown
-    - Uses GPIO 3 which can wake Pi from halt state
+    - GPIO 17: App-level shutdown control
+    - GPIO 3: Wake-from-halt only (gpio-poweroff overlay)
+    - Both GPIOs connected to same button
     """
 
     def __init__(self, config: dict):
@@ -31,7 +35,7 @@ class PowerButtonController:
             config: Power button configuration
         """
         self.enabled = config.get("enabled", True)
-        self.gpio_pin = config.get("gpio_pin", 3)  # GPIO 3 for wake capability
+        self.gpio_pin = config.get("gpio_pin", 17)  # GPIO 17 for shutdown/reboot
         self.short_press_time = config.get("short_press_seconds", 3)
         self.long_press_time = config.get("long_press_seconds", 5)
         self.debounce_time = config.get("debounce_ms", 50)
@@ -55,7 +59,8 @@ class PowerButtonController:
             self.GPIO.setwarnings(False)
 
             # Setup with internal pull-up resistor
-            # Button connects GPIO 3 to GND when pressed
+            # Button connects GPIO 17 (and GPIO 3) to GND when pressed
+            # GPIO 17: App shutdown control, GPIO 3: Wake-only
             self.GPIO.setup(self.gpio_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
             self.gpio_available = True
@@ -210,8 +215,9 @@ def test_power_button():
     print("=" * 70)
     print()
     print("Wiring:")
-    print("  Button Pin 1 → GPIO 3 (Physical Pin 5)")
-    print("  Button Pin 2 → GND (Physical Pin 6)")
+    print("  Button Pin 1 → GPIO 17 (Pin 11) + GPIO 3 (Pin 5) [bridged]")
+    print("  Button Pin 2 → GND (any GND pin)")
+    print("  Note: GPIO 17 for shutdown, GPIO 3 for wake-only")
     print()
     print("Test:")
     print("  Short press (< 3s): Safe shutdown")
@@ -223,7 +229,7 @@ def test_power_button():
 
     config = {
         "enabled": True,
-        "gpio_pin": 3,
+        "gpio_pin": 17,
         "short_press_seconds": 3,
         "long_press_seconds": 5,
         "debounce_ms": 100,  # Increased debounce
@@ -243,11 +249,11 @@ def test_power_button():
         import RPi.GPIO as GPIO
 
         while True:
-            if GPIO.input(3) == GPIO.LOW:
+            if GPIO.input(17) == GPIO.LOW:
                 print("🔘 Button pressed!")
                 press_start = time.time()
 
-                while GPIO.input(3) == GPIO.LOW:
+                while GPIO.input(17) == GPIO.LOW:
                     duration = time.time() - press_start
                     print(f"   Holding: {duration:.1f}s", end="\r")
                     time.sleep(0.1)

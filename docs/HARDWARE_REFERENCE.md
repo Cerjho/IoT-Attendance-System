@@ -12,16 +12,20 @@ RGB LED (Blue)  17          220kΩ         GPIO → R → Anode
 Common Cathode  -           -           → GND
 ```
 
-## Power Button (On/Off)
+## Power Button (Shutdown/Wake)
 
 ```
-Button        GPIO Pin    Notes
-────────────────────────────────────────────────
-Momentary     3 (Pin 5)  Connect other leg to GND (Pin 6)
+Button        GPIO Pins         Notes
+────────────────────────────────────────────────────────────────────
+Momentary     17 (Pin 11) +    Connect both GPIOs to button,
+              3  (Pin 5)       other leg to GND
 ```
 
-- Use GPIO 3 (physical pin 5). It is special on Raspberry Pi and can wake the Pi from a halted state.
-- Short press triggers a safe shutdown; pressing while halted powers the Pi back on.
+- **Standard Dual GPIO Setup:** Button connected to both GPIO 17 AND GPIO 3
+  - **GPIO 17:** Monitored by app for safe/force shutdown control
+  - **GPIO 3:** Wake-from-halt only (gpio-poweroff overlay)
+- **While running:** Short press (< 3s) = safe shutdown, Long press (> 5s) = force
+- **While halted:** Press button to wake Pi (GPIO 3 feature)
 
 ### Enable in Firmware (one-time)
 
@@ -35,11 +39,13 @@ sudo reboot
 This adds the following to your `/boot/firmware/config.txt` (or `/boot/config.txt`):
 
 ```
-dtoverlay=gpio-shutdown,gpio_pin=3,active_low=1,gpio_pull=up
+dtoverlay=gpio-poweroff,gpiopin=3,active_low=1
 ```
 
-With this overlay, the kernel handles shutdown and wake even if the app is not running.
-The app also monitors the button for safe shutdown during operation for extra safety.
+**Standard GPIO Configuration:**
+- **GPIO 3:** Wake-from-halt only (gpio-poweroff overlay)
+- **GPIO 17:** App-level shutdown control (safe/force modes)
+- Both GPIOs connected to same button
 
 ## Visual Feedback Colors
 

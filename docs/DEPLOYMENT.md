@@ -29,7 +29,7 @@ Complete guide for deploying the IoT Attendance System to production.
 - **GPIO Components:**
   - Buzzer (GPIO 23)
   - RGB LED (GPIOs: 22-Red, 27-Green, 17-Blue)
-  - Power button (GPIO 3)
+  - Power button (GPIO 17 + GPIO 3, both connected to same button)
 - **QR Code Reader:** For faster scanning (optional)
 
 ### Recommended Setup

@@ -194,8 +194,9 @@
     "hold_duration_ms": 2000
   },
   "power_button": {
-    "enabled": false,
-    "gpio_pin": 3,
+    "enabled": true,
+    "gpio_pin": 17,
+    "wake_gpio_pin": 3,
     "short_press_seconds": 3,
     "long_press_seconds": 5,
     "debounce_ms": 100,
