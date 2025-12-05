@@ -9,7 +9,8 @@
 
 -- Option 2: Add a policy to allow inserts (RECOMMENDED)
 -- This policy allows any authenticated user to insert attendance records
-CREATE POLICY IF NOT EXISTS "Allow test inserts" 
+DROP POLICY IF EXISTS "Allow test inserts" ON attendance;
+CREATE POLICY "Allow test inserts" 
 ON attendance 
 FOR INSERT 
 TO anon, authenticated
@@ -27,7 +28,8 @@ WITH CHECK (true);
 -- );
 
 -- Also add select policy so we can read the records
-CREATE POLICY IF NOT EXISTS "Allow test selects" 
+DROP POLICY IF EXISTS "Allow test selects" ON attendance;
+CREATE POLICY "Allow test selects" 
 ON attendance 
 FOR SELECT 
 TO anon, authenticated
