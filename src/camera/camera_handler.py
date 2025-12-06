@@ -165,6 +165,13 @@ class CameraHandler:
 
             if not self.cap.isOpened():
                 logger.error(f"Failed to open camera at index {self.camera_index}")
+                # Clean up failed capture object to prevent segfault on exit
+                if self.cap is not None:
+                    try:
+                        self.cap.release()
+                    except:
+                        pass
+                    self.cap = None
                 return False
 
             # Set camera properties
@@ -193,8 +200,13 @@ class CameraHandler:
                 logger.error(
                     f"Camera {self.camera_index} opened but cannot read frames"
                 )
-                self.cap.release()
-                self.cap = None
+                # Clean up failed capture object to prevent segfault
+                if self.cap is not None:
+                    try:
+                        self.cap.release()
+                    except:
+                        pass
+                    self.cap = None
                 return False
 
             self.is_open = True
@@ -205,6 +217,13 @@ class CameraHandler:
 
         except Exception as e:
             logger.error(f"Error starting camera: {str(e)}")
+            # Ensure cleanup on exception to prevent segfault
+            if self.cap is not None:
+                try:
+                    self.cap.release()
+                except:
+                    pass
+                self.cap = None
             return False
 
     def get_frame(self) -> Optional[np.ndarray]:

@@ -624,6 +624,12 @@ class IoTAttendanceSystem:
             print("\n❌ CAMERA INITIALIZATION FAILED")
             print("Cannot run without camera")
             print("Try: python attendance_system.py --demo\n")
+            # Ensure camera cleanup before exit to prevent segfault
+            if self.camera is not None:
+                try:
+                    self.camera.release()
+                except:
+                    pass
             return
 
         # Force disable display if headless
