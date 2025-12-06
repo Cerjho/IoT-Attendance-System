@@ -49,58 +49,107 @@ class ScheduleManager:
     - Logout window: 4:30 PM - 5:30 PM
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict, schedule_data: Dict = None):
         """
         Initialize schedule manager
 
         Args:
-            config: School schedule configuration
+            config: System configuration (for fallback only)
+            schedule_data: Schedule data from server (preferred) or None to use config fallback
         """
         self.config = config
 
-        # Morning class schedule
-        morning = config.get("morning_class", {})
-        self.morning_start = self._parse_time(morning.get("start_time", "07:00"))
-        self.morning_end = self._parse_time(morning.get("end_time", "12:00"))
-        self.morning_login_start = self._parse_time(
-            morning.get("login_window_start", "06:30")
-        )
-        self.morning_login_end = self._parse_time(
-            morning.get("login_window_end", "07:30")
-        )
-        self.morning_logout_start = self._parse_time(
-            morning.get("logout_window_start", "11:30")
-        )
-        self.morning_logout_end = self._parse_time(
-            morning.get("logout_window_end", "12:30")
-        )
-        self.morning_late_threshold = morning.get("late_threshold_minutes", 15)
+        # Use server schedule if provided, otherwise fallback to config
+        if schedule_data:
+            logger.info(f"Loading schedule from server: {schedule_data.get('name', 'Unknown')}")
+            
+            # Morning class schedule from server
+            self.morning_start = self._parse_time(schedule_data.get("morning_start_time", "07:00"))
+            self.morning_end = self._parse_time(schedule_data.get("morning_end_time", "12:00"))
+            self.morning_login_start = self._parse_time(
+                schedule_data.get("morning_login_window_start", "06:30")
+            )
+            self.morning_login_end = self._parse_time(
+                schedule_data.get("morning_login_window_end", "07:30")
+            )
+            self.morning_logout_start = self._parse_time(
+                schedule_data.get("morning_logout_window_start", "11:30")
+            )
+            self.morning_logout_end = self._parse_time(
+                schedule_data.get("morning_logout_window_end", "12:30")
+            )
+            self.morning_late_threshold = schedule_data.get("morning_late_threshold_minutes", 15)
 
-        # Afternoon class schedule
-        afternoon = config.get("afternoon_class", {})
-        self.afternoon_start = self._parse_time(afternoon.get("start_time", "13:00"))
-        self.afternoon_end = self._parse_time(afternoon.get("end_time", "17:00"))
-        self.afternoon_login_start = self._parse_time(
-            afternoon.get("login_window_start", "12:30")
-        )
-        self.afternoon_login_end = self._parse_time(
-            afternoon.get("login_window_end", "13:30")
-        )
-        self.afternoon_logout_start = self._parse_time(
-            afternoon.get("logout_window_start", "16:30")
-        )
-        self.afternoon_logout_end = self._parse_time(
-            afternoon.get("logout_window_end", "17:30")
-        )
-        self.afternoon_late_threshold = afternoon.get("late_threshold_minutes", 15)
+            # Afternoon class schedule from server
+            self.afternoon_start = self._parse_time(schedule_data.get("afternoon_start_time", "13:00"))
+            self.afternoon_end = self._parse_time(schedule_data.get("afternoon_end_time", "17:00"))
+            self.afternoon_login_start = self._parse_time(
+                schedule_data.get("afternoon_login_window_start", "12:30")
+            )
+            self.afternoon_login_end = self._parse_time(
+                schedule_data.get("afternoon_login_window_end", "13:30")
+            )
+            self.afternoon_logout_start = self._parse_time(
+                schedule_data.get("afternoon_logout_window_start", "16:30")
+            )
+            self.afternoon_logout_end = self._parse_time(
+                schedule_data.get("afternoon_logout_window_end", "17:30")
+            )
+            self.afternoon_late_threshold = schedule_data.get("afternoon_late_threshold_minutes", 15)
 
-        # General settings
-        self.auto_detect_session = config.get("auto_detect_session", True)
-        self.allow_early_arrival = config.get("allow_early_arrival", True)
-        self.require_logout = config.get("require_logout", True)
-        self.duplicate_cooldown_minutes = config.get(
-            "duplicate_scan_cooldown_minutes", 5
-        )
+            # General settings from server
+            self.auto_detect_session = schedule_data.get("auto_detect_session", True)
+            self.allow_early_arrival = schedule_data.get("allow_early_arrival", True)
+            self.require_logout = schedule_data.get("require_logout", True)
+            self.duplicate_cooldown_minutes = schedule_data.get(
+                "duplicate_scan_cooldown_minutes", 5
+            )
+        else:
+            logger.warning("No server schedule provided, using config fallback")
+            
+            # Fallback to config (legacy support)
+            morning = config.get("morning_class", {})
+            self.morning_start = self._parse_time(morning.get("start_time", "07:00"))
+            self.morning_end = self._parse_time(morning.get("end_time", "12:00"))
+            self.morning_login_start = self._parse_time(
+                morning.get("login_window_start", "06:30")
+            )
+            self.morning_login_end = self._parse_time(
+                morning.get("login_window_end", "07:30")
+            )
+            self.morning_logout_start = self._parse_time(
+                morning.get("logout_window_start", "11:30")
+            )
+            self.morning_logout_end = self._parse_time(
+                morning.get("logout_window_end", "12:30")
+            )
+            self.morning_late_threshold = morning.get("late_threshold_minutes", 15)
+
+            # Afternoon class schedule
+            afternoon = config.get("afternoon_class", {})
+            self.afternoon_start = self._parse_time(afternoon.get("start_time", "13:00"))
+            self.afternoon_end = self._parse_time(afternoon.get("end_time", "17:00"))
+            self.afternoon_login_start = self._parse_time(
+                afternoon.get("login_window_start", "12:30")
+            )
+            self.afternoon_login_end = self._parse_time(
+                afternoon.get("login_window_end", "13:30")
+            )
+            self.afternoon_logout_start = self._parse_time(
+                afternoon.get("logout_window_start", "16:30")
+            )
+            self.afternoon_logout_end = self._parse_time(
+                afternoon.get("logout_window_end", "17:30")
+            )
+            self.afternoon_late_threshold = afternoon.get("late_threshold_minutes", 15)
+
+            # General settings
+            self.auto_detect_session = config.get("auto_detect_session", True)
+            self.allow_early_arrival = config.get("allow_early_arrival", True)
+            self.require_logout = config.get("require_logout", True)
+            self.duplicate_cooldown_minutes = config.get(
+                "duplicate_scan_cooldown_minutes", 5
+            )
 
         # Validate configuration
         self._validate_config()

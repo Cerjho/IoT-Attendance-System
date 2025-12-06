@@ -58,6 +58,7 @@ from src.lighting import LightingAnalyzer, LightingCompensator
 from src.network import ConnectivityMonitor
 from src.notifications import SMSNotifier
 from src.sync.roster_sync import RosterSyncManager
+from src.sync.schedule_sync import ScheduleSync
 from src.utils import load_config, setup_logger
 
 logger = logging.getLogger(__name__)
@@ -157,8 +158,29 @@ class IoTAttendanceSystem:
         # Initialize roster sync manager (Supabase as primary, SQLite as cache)
         self.roster_sync = RosterSyncManager(cloud_config, self.database.db_path)
 
-        # Initialize schedule manager for school schedule
-        self.schedule_manager = ScheduleManager(self.config)
+        # Initialize schedule sync manager
+        self.schedule_sync = ScheduleSync(self.config, self.database.db_path)
+
+        # Sync schedules from server on startup
+        server_schedule = None
+        if self.schedule_sync.enabled:
+            logger.info("Syncing schedules from server...")
+            if self.schedule_sync.sync_schedules():
+                server_schedule = self.schedule_sync.get_default_schedule()
+                if server_schedule:
+                    logger.info(f"✅ Using server schedule: {server_schedule['name']}")
+                    print(f"✅ Using server schedule: {server_schedule['name']}")
+                else:
+                    logger.warning("⚠️  No default schedule found, using config fallback")
+                    print("⚠️  No default schedule found, using config fallback")
+            else:
+                logger.warning("⚠️  Schedule sync failed, using config fallback")
+                print("⚠️  Schedule sync failed, using config fallback")
+        else:
+            logger.info("Schedule sync disabled, using config fallback")
+
+        # Initialize schedule manager with server schedule or config fallback
+        self.schedule_manager = ScheduleManager(self.config, server_schedule)
 
         # Auto-sync roster on startup
         if self.roster_sync.enabled:
