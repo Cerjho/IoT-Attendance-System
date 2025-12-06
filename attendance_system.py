@@ -856,8 +856,11 @@ class IoTAttendanceSystem:
                     elapsed = time.time() - capture_start_time
                     remaining = self.capture_window - elapsed
 
-                    # Detect faces in current frame
-                    faces = self.face_detector.detect_faces(frame)
+                    # Detect faces in current frame using Haar Cascade
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    faces = self.face_quality_checker.face_cascade.detectMultiScale(
+                        gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
+                    )
 
                     if len(faces) > 0:
                         # Face detected!
@@ -988,7 +991,7 @@ class IoTAttendanceSystem:
                                     photo_path,
                                     current_student_id,
                                     current_scan_type,
-                                    attendance_status,
+                                    attendance_status.value if hasattr(attendance_status, 'value') else str(attendance_status),
                                 ):
                                     self.session_count += 1
                                     self.buzzer.beep("success")
