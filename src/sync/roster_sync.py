@@ -179,8 +179,9 @@ class RosterSyncManager:
             # Fetch active students with all needed fields (including id for UUID)
             # Note: Only fetch fields needed for local validation and display
             # Context fields (section_id, subject_id, teaching_load_id) are determined by backend
+            # Now includes schedule data via sections left join (students without sections still included)
             params = {
-                "select": "id,student_number,first_name,middle_name,last_name,email,parent_guardian_contact,grade_level,section,status",
+                "select": "id,student_number,first_name,middle_name,last_name,email,parent_guardian_contact,grade_level,section,section_id,sections(schedule_id,school_schedules(morning_start_time,afternoon_start_time)),status",
                 "status": "eq.active",  # Only active students
             }
 
@@ -262,6 +263,31 @@ class RosterSyncManager:
                 name_parts = [first_name, middle_name, last_name]
                 full_name = " ".join([part for part in name_parts if part]).strip()
 
+                # Extract schedule information from joined sections table
+                section_id = student.get("section_id")
+                schedule_id = None
+                allowed_session = "both"  # Default: allow both sessions if no schedule
+                
+                # Parse nested sections data
+                sections_data = student.get("sections")
+                if sections_data and isinstance(sections_data, dict):
+                    schedule_id = sections_data.get("schedule_id")
+                    schedules_data = sections_data.get("school_schedules")
+                    
+                    if schedules_data and isinstance(schedules_data, dict):
+                        # Determine allowed session based on schedule times
+                        morning_start = schedules_data.get("morning_start_time")
+                        afternoon_start = schedules_data.get("afternoon_start_time")
+                        
+                        # If both times exist, student can attend both sessions
+                        # If only one exists, restrict to that session
+                        if morning_start and afternoon_start:
+                            allowed_session = "both"
+                        elif morning_start:
+                            allowed_session = "morning"
+                        elif afternoon_start:
+                            allowed_session = "afternoon"
+
                 # Store in local cache with UUID (using student_id field for compatibility)
                 # First ensure columns exist
                 cursor.execute(
@@ -272,6 +298,9 @@ class RosterSyncManager:
                         name TEXT,
                         email TEXT,
                         parent_phone TEXT,
+                        section_id TEXT,
+                        schedule_id TEXT,
+                        allowed_session TEXT,
                         created_at TEXT
                     )
                     """
@@ -279,8 +308,8 @@ class RosterSyncManager:
                 
                 cursor.execute(
                     """
-                    INSERT OR REPLACE INTO students (student_id, uuid, name, email, parent_phone, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO students (student_id, uuid, name, email, parent_phone, section_id, schedule_id, allowed_session, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         student_number,
@@ -288,6 +317,9 @@ class RosterSyncManager:
                         full_name,
                         email,
                         parent_phone,
+                        section_id,
+                        schedule_id,
+                        allowed_session,
                         datetime.now().isoformat(),
                     ),
                 )

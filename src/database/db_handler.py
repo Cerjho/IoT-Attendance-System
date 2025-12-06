@@ -88,10 +88,22 @@ class AttendanceDatabase:
                 qr_data TEXT,
                 scan_type TEXT DEFAULT 'time_in',
                 status TEXT DEFAULT 'present',
+                schedule_session TEXT,
                 FOREIGN KEY (student_id) REFERENCES students(student_id)
             )
         """
         )
+
+        # Migrate existing attendance table to add schedule_session if needed
+        try:
+            cursor.execute("PRAGMA table_info(attendance)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if "schedule_session" not in columns:
+                logger.info("Adding schedule_session column to attendance table")
+                cursor.execute("ALTER TABLE attendance ADD COLUMN schedule_session TEXT")
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Could not add schedule_session column (may already exist): {e}")
 
         # Sessions table (for grouping attendance by session/class)
         cursor.execute(
@@ -164,6 +176,7 @@ class AttendanceDatabase:
         qr_data: str = None,
         scan_type: str = "time_in",
         status: str = "present",
+        schedule_session: str = None,
     ) -> Optional[int]:
         """
         Record attendance entry
@@ -173,6 +186,7 @@ class AttendanceDatabase:
             qr_data: QR code data
             scan_type: 'time_in' for login or 'time_out' for logout
             status: 'present', 'late', 'absent', 'excused'
+            schedule_session: 'morning', 'afternoon', 'both', or None
         Returns: attendance record ID or None on failure
         """
         with self._lock:
@@ -184,10 +198,10 @@ class AttendanceDatabase:
 
                 cursor.execute(
                     """
-                    INSERT INTO attendance (student_id, timestamp, photo_path, qr_data, scan_type, status)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO attendance (student_id, timestamp, photo_path, qr_data, scan_type, status, schedule_session)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                    (student_id, timestamp, photo_path, qr_data, scan_type, status),
+                    (student_id, timestamp, photo_path, qr_data, scan_type, status, schedule_session),
                 )
 
                 record_id = cursor.lastrowid

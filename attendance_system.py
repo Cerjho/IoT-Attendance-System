@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import threading
 
 from src.attendance.schedule_manager import ScheduleManager
+from src.attendance.schedule_validator import ScheduleValidator, ValidationResult
 from src.camera import CameraHandler
 from src.cloud import CloudSyncManager
 from src.database import AttendanceDatabase
@@ -181,6 +182,10 @@ class IoTAttendanceSystem:
 
         # Initialize schedule manager with server schedule or config fallback
         self.schedule_manager = ScheduleManager(self.config, server_schedule)
+
+        # Initialize schedule validator
+        self.schedule_validator = ScheduleValidator(self.database.db_path)
+        logger.info("Schedule validator initialized")
 
         # Auto-sync roster on startup
         if self.roster_sync.enabled:
@@ -541,6 +546,7 @@ class IoTAttendanceSystem:
         qr_data: str,
         scan_type: str = "time_in",
         status: str = "present",
+        schedule_session: str = None,
     ) -> bool:
         """Upload attendance record to database and sync to cloud"""
         try:
@@ -551,10 +557,10 @@ class IoTAttendanceSystem:
                 self.database.add_student(student_id, name=None, email=None)
                 logger.info(f"New student registered: {student_id}")
 
-            # Record attendance locally
-            logger.debug(f"Recording attendance for {student_id} (type: {scan_type}, status: {status})")
+            # Record attendance locally with schedule session tracking
+            logger.debug(f"Recording attendance for {student_id} (type: {scan_type}, status: {status}, session: {schedule_session})")
             record_id = self.database.record_attendance(
-                student_id, photo_path, qr_data, scan_type, status
+                student_id, photo_path, qr_data, scan_type, status, schedule_session
             )
 
             if record_id:
@@ -759,6 +765,54 @@ class IoTAttendanceSystem:
                         schedule_info = self.schedule_manager.get_schedule_info()
                         expected_scan_type = schedule_info["expected_scan_type"]
                         current_session = schedule_info["current_session"]
+
+                        # VALIDATE STUDENT SCHEDULE
+                        validation_result, validation_details = self.schedule_validator.validate_student_schedule(
+                            student_id, current_session
+                        )
+
+                        if validation_result == ValidationResult.WRONG_SESSION:
+                            # SCHEDULE MISMATCH - REJECT SCAN
+                            student_name = validation_details.get("student_name", student_id)
+                            allowed_session = validation_details.get("allowed_session", "unknown")
+                            message = validation_details.get("message", "Wrong schedule")
+                            
+                            print(f"   ❌ SCHEDULE VIOLATION: {student_name}")
+                            print(f"   Assigned: {allowed_session.upper()} class")
+                            print(f"   Current: {current_session.upper()} session")
+                            logger.warning(
+                                f"Schedule validation failed for {student_id}: {message}"
+                            )
+                            
+                            self.buzzer.beep("error")
+                            self.rgb_led.show_color("error", fade=True, blocking=False)
+
+                            if display:
+                                self._show_message(
+                                    display_frame,
+                                    "WRONG SCHEDULE!",
+                                    f"Student: {student_name}",
+                                    (0, 0, 255),
+                                    f"Assigned to {allowed_session.upper()} class",
+                                    duration_ms=3000,
+                                )
+                            else:
+                                time.sleep(3)
+
+                            continue
+
+                        elif validation_result == ValidationResult.ERROR:
+                            # Validation error - log but allow scan (fail-open for reliability)
+                            logger.error(
+                                f"Schedule validation error for {student_id}: {validation_details.get('message')}"
+                            )
+                            print(f"   ⚠️  Schedule validation error - allowing scan")
+
+                        elif validation_result == ValidationResult.VALID:
+                            # Schedule validated successfully
+                            logger.info(
+                                f"✓ Schedule validated: {validation_details.get('student_name', student_id)} - {validation_details.get('message')}"
+                            )
 
                         # Check if this scan is allowed (duplicate prevention)
                         last_scan = self.database.get_last_scan(student_id)
@@ -1020,6 +1074,7 @@ class IoTAttendanceSystem:
                                     current_student_id,
                                     current_scan_type,
                                     attendance_status.value if hasattr(attendance_status, 'value') else str(attendance_status),
+                                    current_session_name,  # Pass schedule session for tracking
                                 ):
                                     self.session_count += 1
                                     self.buzzer.beep("success")
