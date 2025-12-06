@@ -65,7 +65,7 @@
     "afternoon_class": {
       "start_time": "13:00",
       "end_time": "17:00",
-      "login_window_start": "",
+      "login_window_start": "12:30",
       "login_window_end": "13:30",
       "logout_window_start": "16:30",
       "logout_window_end": "17:30",
@@ -75,6 +75,14 @@
     "allow_early_arrival": true,
     "require_logout": true,
     "duplicate_scan_cooldown_minutes": 5
+  },
+  "schedule_validation": {
+    "enabled": true,
+    "enforce_student_schedules": true,
+    "fail_open_on_error": true,
+    "allow_no_schedule_students": true,
+    "log_violations": true,
+    "display_error_duration_ms": 3000
   },
   "cloud": {
     "enabled": true,
@@ -98,6 +106,12 @@
       "cache_expiry_hours": 24,
       "auto_wipe_after_class": true,
       "class_end_time": "17:30"
+    },
+    "schedule_sync": {
+      "enabled": true,
+      "auto_sync_on_boot": true,
+      "use_server_schedules": true,
+      "fallback_to_config": true
     }
   },
   "disk_monitor": {
@@ -276,11 +290,13 @@
     "absence_alert_template": "\u2757 ABSENCE ALERT\n\n{student_name} not detected at school today ({date}).\n\nIf excused, please contact office.\n\nView: {attendance_link}\n\n- Mabini High School",
     "weekly_summary_template": "\ud83d\udcca WEEKLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days}\nLate: {late_count}\nAbsent: {absent_count}\n\nView: {attendance_link}\n\n- Mabini High School",
     "monthly_summary_template": "\ud83d\udcca MONTHLY SUMMARY\n\n{student_name}\nPresent: {days_present}/{total_days} ({percentage}%)\nLate: {late_count} times\nAbsent: {absent_count} days\n\nView: {attendance_link}\n\n- Mabini High School",
+    "schedule_violation_template": "\u274c SCHEDULE VIOLATION\n\n{student_name}\nAssigned: {allowed_session} class\nAttempted: {current_session} scan\n\ud83d\udcc5 {date} at {time}\n\nScan rejected. Please check schedule.\n\n- Mabini High School",
     "attendance_view_url": "https://mabini-hs-attendance.vercel.app/Parents/View.html?student_id={student_id}",
     "send_on_capture": true,
     "send_late_alerts": true,
     "send_absence_alerts": false,
     "send_no_checkout_alerts": false,
+    "send_schedule_violations": false,
     "send_weekly_summary": false,
     "send_monthly_summary": false,
     "notification_preferences": {
@@ -289,11 +305,12 @@
       "late_arrival": true,
       "absence": false,
       "no_checkout": false,
+      "schedule_violation": false,
       "weekly_summary": false,
       "monthly_summary": false
     },
     "quiet_hours": {
-      "enabled": true,
+      "enabled": false,
       "start": "22:00",
       "end": "06:00"
     },
