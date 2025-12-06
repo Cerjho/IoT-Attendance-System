@@ -154,7 +154,7 @@ psql $DATABASE_URL -f supabase/migrations/20251206120000_fix_iot_devices_permiss
 
 Run to see the SQL that needs to be applied:
 ```bash
-bash scripts/fix_iot_devices_permissions.sh
+bash scripts/maintenance/fix_iot_devices_permissions.sh
 ```
 
 ### Verification
@@ -220,10 +220,10 @@ if not self.cap.isOpened():
 
 ### Camera Detection Utility
 
-Created `scripts/detect_cameras.sh` to help diagnose camera issues:
+Created `scripts/maintenance/detect_cameras.sh` to help diagnose camera issues:
 
 ```bash
-bash scripts/detect_cameras.sh
+bash scripts/maintenance/detect_cameras.sh
 ```
 
 **Output on this system:**
@@ -288,8 +288,8 @@ sudo journalctl -u attendance-system -f
 3. **src/camera/camera_handler.py** - Added cleanup in 3 locations to prevent segfault
 4. **attendance_system.py** - Added cleanup before exit on camera failure
 5. **supabase/migrations/20251206120000_fix_iot_devices_permissions.sql** - Created (needs manual apply)
-6. **scripts/fix_iot_devices_permissions.sh** - Created helper script
-7. **scripts/detect_cameras.sh** - Created camera detection utility
+6. **scripts/maintenance/fix_iot_devices_permissions.sh** - Created helper script
+7. **scripts/maintenance/detect_cameras.sh** - Created camera detection utility
 
 ---
 

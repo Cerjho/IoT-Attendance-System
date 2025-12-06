@@ -143,11 +143,11 @@ $ echo $?
 
 ## Camera Detection Utility Created
 
-Created helper script to diagnose camera issues: `scripts/detect_cameras.sh`
+Created helper script to diagnose camera issues: `scripts/maintenance/detect_cameras.sh`
 
 **Usage:**
 ```bash
-bash scripts/detect_cameras.sh
+bash scripts/maintenance/detect_cameras.sh
 ```
 
 **Output on this system:**
@@ -205,7 +205,7 @@ bash scripts/detect_cameras.sh
    }
    ```
 
-### For Testing Without Camera:
+**For Testing Without Camera:
 
 **Demo mode** is available but currently has a database schema issue. The demo queries `students.student_number` but the local database might use a different schema.
 
@@ -220,7 +220,7 @@ bash scripts/detect_cameras.sh
 
 1. **src/camera/camera_handler.py** - Added cleanup in 3 locations
 2. **attendance_system.py** - Added cleanup before exit on camera init failure
-3. **scripts/detect_cameras.sh** - New utility to detect working cameras
+3. **scripts/maintenance/detect_cameras.sh** - New utility to detect working cameras
 
 ---
 
