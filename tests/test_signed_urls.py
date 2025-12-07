@@ -37,14 +37,10 @@ def test_url_signing():
     # Test verification
     is_valid, verified_id, error = signer.verify_url(signed_url)
     
-    if is_valid:
-        print(f"\n✅ Verification PASSED")
-        print(f"   Student ID: {verified_id}")
-    else:
-        print(f"\n❌ Verification FAILED: {error}")
-        return False
-    
-    return True
+    assert is_valid, f"Verification FAILED: {error}"
+    assert verified_id == student_id, f"Student ID mismatch: {verified_id} != {student_id}"
+    print(f"\n✅ Verification PASSED")
+    print(f"   Student ID: {verified_id}")
 
 
 def test_expiry():
@@ -76,14 +72,10 @@ def test_expiry():
     print(f"\n📅 Testing expired URL (expired 1 hour ago)...")
     is_valid, verified_id, error = signer.verify_url(expired_url)
     
-    if not is_valid and "expired" in error.lower():
-        print(f"✅ Expiry detection PASSED")
-        print(f"   Error: {error}")
-        return True
-    else:
-        print(f"❌ Expiry detection FAILED")
-        print(f"   Expected expired error, got: {error}")
-        return False
+    assert not is_valid, "Expired URL should not be valid"
+    assert "expired" in error.lower(), f"Expected expired error, got: {error}"
+    print(f"✅ Expiry detection PASSED")
+    print(f"   Error: {error}")
 
 
 def test_tampering():
@@ -108,14 +100,10 @@ def test_tampering():
     
     is_valid, verified_id, error = signer.verify_url(tampered_url)
     
-    if not is_valid and "signature" in error.lower():
-        print(f"\n✅ Tamper detection PASSED")
-        print(f"   Error: {error}")
-        return True
-    else:
-        print(f"\n❌ Tamper detection FAILED")
-        print(f"   Tampered URL was accepted! Security issue!")
-        return False
+    assert not is_valid, "Tampered URL should not be valid"
+    assert "signature" in error.lower(), f"Expected signature error, got: {error}"
+    print(f"\n✅ Tamper detection PASSED")
+    print(f"   Error: {error}")
 
 
 def test_sms_integration():
@@ -145,10 +133,7 @@ def test_sms_integration():
     notifier = SMSNotifier(config)
     
     # Check if URL signer was initialized
-    if notifier.url_signer is None:
-        print("❌ URL signer not initialized in SMSNotifier")
-        return False
-    
+    assert notifier.url_signer is not None, "URL signer not initialized in SMSNotifier"
     print("✅ URL signer initialized")
     
     # Generate attendance link
@@ -159,22 +144,17 @@ def test_sms_integration():
     print(f"   {link}")
     
     # Verify the link
-    if 'sig=' in link and 'expires=' in link:
-        print("\n✅ Link contains signature and expiry")
-        
-        # Verify signature
-        is_valid, verified_id, error = notifier.url_signer.verify_url(link)
-        
-        if is_valid:
-            print(f"✅ Signature verification PASSED")
-            print(f"   Student ID: {verified_id}")
-            return True
-        else:
-            print(f"❌ Signature verification FAILED: {error}")
-            return False
-    else:
-        print("❌ Link missing signature or expiry")
-        return False
+    assert 'sig=' in link, "Link missing signature"
+    assert 'expires=' in link, "Link missing expiry"
+    print("\n✅ Link contains signature and expiry")
+    
+    # Verify signature
+    is_valid, verified_id, error = notifier.url_signer.verify_url(link)
+    
+    assert is_valid, f"Signature verification FAILED: {error}"
+    assert verified_id == student_id, f"Student ID mismatch: {verified_id} != {student_id}"
+    print(f"✅ Signature verification PASSED")
+    print(f"   Student ID: {verified_id}")
 
 
 def test_config_fallback():
@@ -203,12 +183,8 @@ def test_config_fallback():
     print(f"\n📧 Generated link (signing disabled):")
     print(f"   {link}")
     
-    if 'sig=' not in link:
-        print("\n✅ Unsigned URL generated (as expected)")
-        return True
-    else:
-        print("\n❌ URL contains signature when signing disabled")
-        return False
+    assert 'sig=' not in link, "URL contains signature when signing disabled"
+    print("\n✅ Unsigned URL generated (as expected)")
 
 
 def main():
