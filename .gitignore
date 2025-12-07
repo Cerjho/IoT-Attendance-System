@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyc
+*.pyo
 .Python
 build/
 develop-eggs/
@@ -19,6 +21,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
 
 # Virtual Environment
 .venv/
@@ -119,10 +122,13 @@ backups/*
 .pytest_cache/
 .coverage
 htmlcov/
+docs/testing/TEST_REPORT_*.md
 
 # Temporary files
 *.tmp
 temp_*
+.lgd-*
+.cleanup_*
 
 # Supabase CLI temp files
 supabase/.temp/
