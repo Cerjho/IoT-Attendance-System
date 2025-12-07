@@ -8,8 +8,10 @@ Advanced face recognition attendance system for Raspberry Pi with automatic qual
 🚀 **Lightning-Fast Scanning** - < 100ms response time with offline capability  
 ☁️ **Cloud-First Architecture** - Supabase primary database with local SQLite cache  
 🔒 **Privacy Compliant** - Daily roster sync with automatic cache wipe  
-📱 **SMS Notifications** - Real-time parent/guardian notifications  
+📱 **SMS Notifications** - Real-time parent/guardian notifications with customizable templates  
 🎯 **QR Code Validation** - Student verification against daily roster  
+📅 **Schedule Validation** - Prevent wrong-session scans (morning/afternoon enforcement)  
+⚙️ **Server-Side Configuration** - Manage SMS templates, schedules, and preferences in Supabase  
 🛡️ **Production-Ready** - Circuit breakers, disk monitoring, camera recovery, transaction safety, configurable timeouts, queue validation, file locking, structured logging  
 
 ## Quick Start
@@ -115,6 +117,11 @@ IoT-Attendance-System/
 - **[Roster Sync](docs/technical/ROSTER_SYNC.md)** - Daily roster synchronization
 - **[Supabase Setup](docs/technical/SUPABASE_SETUP.md)** - Database configuration
 - **[SMS Notifications](docs/technical/SMS_NOTIFICATION_GUIDE.md)** - SMS integration
+- **[Schedule Validation](docs/SCHEDULE_VALIDATION.md)** - Student schedule enforcement
+- **[Server-Side Config](docs/SERVER_SIDE_CONFIG.md)** - Configuration management
+
+### Administrator Guides
+- **[Admin Guide](docs/ADMIN_GUIDE.md)** - Complete system administration reference
 
 ## Key Workflows
 
@@ -124,23 +131,31 @@ IoT-Attendance-System/
 ```
 System starts → Download today's roster from Supabase
 → Cache 30-100 students locally → Ready for offline scanning
+→ Download SMS templates and schedules → Cache locally for offline use
 ```
 
 **During Class**
 ```
-Student scans QR → Validate against roster → Face quality checks
-→ Auto-capture after 3s stability → Upload to Supabase → SMS notification
+Student scans QR → Validate against roster → Check schedule (morning/afternoon)
+→ Face quality checks → Auto-capture after 3s stability
+→ Upload to Supabase → SMS notification (if parent opted-in)
 ```
 
 **Evening (6 PM)**
 ```
 Auto-wipe student cache → Privacy compliance maintained
+→ SMS template cache remains valid for 24 hours
 ```
 
 ### Auto-Capture Process
 
 1. **QR Code Scan** - Student ID validation against roster
-2. **Quality Monitoring** - 9 simultaneous checks:
+2. **Schedule Validation** - Verify student can scan during current session (morning/afternoon)
+   - Morning Only: 7:00 AM - 12:00 PM
+   - Afternoon Only: 1:00 PM - 6:00 PM
+   - Both Sessions: Allowed anytime
+   - Violation displays error with red LED + beep
+3. **Quality Monitoring** - 9 simultaneous checks:
    - Face count (exactly 1)
    - Face size (≥ 80px width)
    - Face centered (±12%)
@@ -150,8 +165,9 @@ Auto-wipe student cache → Privacy compliance maintained
    - Sharpness (Laplacian > 80)
    - Brightness (70-180 range)
    - Illumination uniformity
-3. **Stability Timer** - 3-second countdown when all checks pass
-4. **Capture & Upload** - High-quality photo saved and uploaded
+4. **Stability Timer** - 3-second countdown when all checks pass
+5. **Capture & Upload** - High-quality photo saved and uploaded
+6. **SMS Notification** - Parent receives customized SMS (if opted-in)
 
 ## Hardware Requirements
 
@@ -179,6 +195,12 @@ python utils/test-scripts/test_roster_sync.py
 # Test face quality
 python utils/test-scripts/test_face_quality.py
 
+# Test schedule validation
+python utils/test-scripts/test_schedule_validation.py
+
+# Test SMS templates
+python utils/test-scripts/test_sms_templates.py
+
 # Check system status
 python utils/check_status.py
 ```
@@ -200,7 +222,7 @@ Integration queue sync test ensures offline queue → cloud sync path marks reco
 pytest -q tests/test_queue_sync_integration.py -m integration
 ```
 
-### Adding Students
+### Managing Students
 
 ```bash
 # Add single student
@@ -212,6 +234,18 @@ python utils/manage_supabase_students.py --import-csv data/students.csv
 # List students
 python utils/manage_supabase_students.py --list
 ```
+
+### Managing Schedules
+
+```bash
+# Assign schedule to sections (bulk operation)
+python scripts/assign_schedules.py
+
+# View schedule statistics
+python utils/test-scripts/test_schedule_validation.py
+```
+
+See **[Admin Guide](docs/ADMIN_GUIDE.md)** for complete schedule and template management.
 
 ### Viewing Attendance
 
@@ -297,9 +331,50 @@ Configure in `config/config.json`:
     "read_timeout": 10,
     "storage_read_timeout": 30,
     "connectivity_timeout": 3
+  },
+  "schedule_validation": {
+    "enabled": true,
+    "strict_mode": true
   }
 }
 ```
+
+### Schedule Validation
+
+Prevents students from scanning during wrong sessions:
+
+**Configuration:**
+- `enabled`: Turn validation on/off
+- `strict_mode`: Reject violations vs. warn-only
+
+**Schedule Types:**
+- **Morning Only**: Students restricted to 7:00 AM - 12:00 PM
+- **Afternoon Only**: Students restricted to 1:00 PM - 6:00 PM  
+- **Both Sessions**: Students can scan anytime
+- **No Restriction**: No validation applied
+
+Manage schedules via Supabase or use `scripts/assign_schedules.py` for bulk operations.
+
+### Server-Side Configuration
+
+SMS templates, notification preferences, and school schedules are now managed in Supabase:
+
+**SMS Templates** (`sms_templates` table):
+- 8 default templates (check_in, check_out, late_arrival, etc.)
+- Customizable message text with variable substitution
+- Template caching for offline reliability
+
+**Notification Preferences** (`notification_preferences` table):
+- Per-parent opt-in/opt-out control
+- Notification type filtering (check_in, late_arrival, etc.)
+- Quiet hours support
+
+**School Schedules** (`school_schedules` table):
+- Define morning/afternoon time windows
+- Assign schedules to sections
+- System validates student scans against assigned schedule
+
+See **[Server-Side Config Guide](docs/SERVER_SIDE_CONFIG.md)** for migration details.
 
 ## Troubleshooting
 
@@ -330,6 +405,18 @@ python utils/test-scripts/test_roster_sync.py
 - Verify student exists in Supabase
 - Check if roster was synced today
 - Force re-sync roster
+
+### Schedule violation error
+- Check student's `allowed_session` in roster
+- Verify section's assigned `schedule_id` 
+- View schedule validation stats:
+  ```bash
+  python utils/test-scripts/test_schedule_validation.py
+  ```
+- Assign correct schedule:
+  ```bash
+  python scripts/assign_schedules.py
+  ```
 
 ### Manual Force Sync
 If records are queued offline, you can force a sync when online:
@@ -378,5 +465,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Last Updated**: November 25, 2025  
-**Version**: 2.0.0
+**Last Updated**: December 7, 2024  
+**Version**: 2.1.0
+
+### Recent Updates
+
+**v2.1.0 (December 7, 2024)**
+- ✅ Schedule validation system - Enforce morning/afternoon sessions
+- ✅ Server-side configuration - Manage SMS templates in Supabase
+- ✅ Notification preferences - Per-parent opt-in/opt-out control
+- ✅ Template caching - Offline SMS template support
+- ✅ Bulk schedule assignment - Administrative tools for schedule management
+
+**v2.0.0 (November 25, 2024)**
+- ✅ Production robustness features (Phase 1 & 2)
+- ✅ Circuit breakers, disk monitoring, camera recovery
+- ✅ Network timeouts, queue validation, file locking
+- ✅ Structured logging with correlation IDs

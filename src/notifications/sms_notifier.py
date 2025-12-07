@@ -3,6 +3,8 @@
 SMS Notifier for Parent Notifications
 Uses Android SMS Gateway Cloud Server API
 API Documentation: https://capcom6.github.io/android-sms-gateway/
+
+Enhanced with server-side template and preference management.
 """
 import base64
 import logging
@@ -11,6 +13,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import requests
+
+from src.notifications.template_cache import TemplateCache
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +73,9 @@ class SMSNotifier:
                 - device_id: SMS Gateway device ID
                 - api_url: API endpoint URL (optional, defaults to cloud server)
                 - message_template: SMS message template (optional)
+                - supabase_url: Supabase URL for template/preference fetching
+                - supabase_key: Supabase API key
+                - db_path: Local database path for template cache
         """
         # Time provider for easier testing of cooldown & quiet hours
         self.time_provider = time_provider or TimeProvider()
@@ -80,7 +87,21 @@ class SMSNotifier:
             "api_url", "https://api.sms-gate.app/3rdparty/v1/message"
         )
 
-        # Support for multiple message templates
+        # Supabase configuration for server-side templates and preferences
+        self.supabase_url = config.get("supabase_url", os.environ.get("SUPABASE_URL", ""))
+        self.supabase_key = config.get("supabase_key", os.environ.get("SUPABASE_KEY", ""))
+        self.server_templates_enabled = config.get("server_templates_enabled", True)
+        
+        # Initialize template cache
+        db_path = config.get("db_path", "data/attendance.db")
+        self.template_cache = TemplateCache(db_path)
+        
+        # Refresh templates from server on startup
+        if self.server_templates_enabled and self.supabase_url and self.supabase_key:
+            self._refresh_templates_from_server()
+
+        # Legacy fallback: Support for local template configuration
+        # These will be used only if server templates are disabled or unavailable
         self.login_message_template = config.get(
             "login_message_template",
             config.get(
@@ -250,6 +271,168 @@ class SMSNotifier:
         else:
             # Plain URL without signature
             return self.attendance_view_url.format(student_id=student_identifier)
+    
+    def _refresh_templates_from_server(self) -> bool:
+        """
+        Fetch SMS templates from Supabase and update local cache.
+        
+        Returns:
+            True if templates fetched successfully
+        """
+        try:
+            if not self.supabase_url or not self.supabase_key:
+                logger.debug("Supabase credentials not configured, skipping template refresh")
+                return False
+            
+            # Fetch all active templates from Supabase
+            url = f"{self.supabase_url}/rest/v1/sms_templates"
+            params = {"is_active": "eq.true", "select": "*"}
+            headers = {
+                "apikey": self.supabase_key,
+                "Authorization": f"Bearer {self.supabase_key}"
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                templates = response.json()
+                count = self.template_cache.update_cache(templates)
+                logger.info(f"Refreshed {count} SMS templates from server")
+                return True
+            else:
+                logger.warning(f"Failed to fetch templates from server: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error refreshing templates from server: {e}")
+            return False
+    
+    def _get_template_from_server_or_cache(self, template_type: str) -> str:
+        """
+        Get template message text from cache (or fallback to local config).
+        
+        Args:
+            template_type: Type of template (check_in, check_out, late_arrival, etc.)
+        
+        Returns:
+            Template message text with {{variable}} placeholders
+        """
+        if not self.server_templates_enabled:
+            # Use legacy local templates
+            return self._get_local_template(template_type)
+        
+        # Try to get from cache first
+        template_text = self.template_cache.get_template_text(template_type)
+        
+        # Check if cache is stale and attempt refresh in background
+        if self.template_cache.is_cache_stale():
+            logger.debug("Template cache is stale, attempting refresh")
+            self._refresh_templates_from_server()
+        
+        return template_text
+    
+    def _get_local_template(self, template_type: str) -> str:
+        """
+        Get template from local config (legacy fallback).
+        
+        Args:
+            template_type: Type of template
+        
+        Returns:
+            Template string with {variable} placeholders (Python format style)
+        """
+        template_map = {
+            'check_in': self.login_message_template,
+            'check_out': self.logout_message_template,
+            'late_arrival': self.late_arrival_template,
+            'early_departure': self.no_checkout_template,
+            'absence_detected': self.absence_alert_template,
+            'no_checkout': self.no_checkout_template,
+        }
+        return template_map.get(template_type, self.login_message_template)
+    
+    def _should_send_notification(
+        self, 
+        phone: str, 
+        student_id: str, 
+        notification_type: str,
+        student_uuid: Optional[str] = None
+    ) -> bool:
+        """
+        Check if notification should be sent based on server preferences.
+        
+        Args:
+            phone: Parent phone number
+            student_id: Student number (e.g., '2021001')
+            notification_type: Type of notification (check_in, check_out, etc.)
+            student_uuid: Student UUID from Supabase (if available)
+        
+        Returns:
+            True if notification should be sent
+        """
+        if not self.server_templates_enabled or not self.supabase_url:
+            # Fallback to local checks only
+            return True
+        
+        try:
+            # Call should_send_notification RPC function
+            url = f"{self.supabase_url}/rest/v1/rpc/should_send_notification"
+            headers = {
+                "apikey": self.supabase_key,
+                "Authorization": f"Bearer {self.supabase_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Use UUID if available, otherwise student_number
+            identifier = student_uuid if student_uuid else student_id
+            
+            payload = {
+                "phone_param": phone,
+                "student_id_param": identifier,
+                "notification_type": notification_type
+            }
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=5)
+            
+            if response.status_code == 200:
+                result = response.json()
+                should_send = result if isinstance(result, bool) else True
+                
+                if not should_send:
+                    logger.info(f"Notification blocked by server preferences: {notification_type} to {phone}")
+                
+                return should_send
+            else:
+                # On error, default to allowing notification (fail open)
+                logger.warning(f"Failed to check notification preferences: {response.status_code}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error checking notification preferences: {e}")
+            # Fail open: allow notification if check fails
+            return True
+    
+    def _format_template_variables(self, template: str, **kwargs) -> str:
+        """
+        Format template variables, supporting both {{var}} and {var} styles.
+        
+        Args:
+            template: Template string
+            **kwargs: Variable values
+        
+        Returns:
+            Formatted message
+        """
+        # Convert {{variable}} to {variable} for Python formatting
+        import re
+        formatted_template = re.sub(r'\{\{(\w+)\}\}', r'{\1}', template)
+        
+        try:
+            return formatted_template.format(**kwargs)
+        except KeyError as e:
+            logger.warning(f"Missing template variable: {e}")
+            # Return template with missing variables as-is
+            return formatted_template
 
     def send_attendance_notification(
         self,
@@ -288,13 +471,19 @@ class SMSNotifier:
             )
             return False
 
-        # Check quiet hours
+        # Check quiet hours (local check)
         if self._is_quiet_hours():
             logger.info(f"Quiet hours active, skipping SMS for {student_id}")
             return False
 
-        # Check cooldown
-        notification_type = f"{scan_type}_{status}"
+        # Determine notification type for server preference check
+        notification_type = self._get_notification_type(scan_type, status, minutes_late)
+        
+        # Check server-side preferences
+        if not self._should_send_notification(parent_phone, student_id, notification_type, student_uuid):
+            return False
+
+        # Check cooldown (local)
         if not self._check_cooldown(student_id, notification_type):
             return False
 
@@ -302,28 +491,27 @@ class SMSNotifier:
         if timestamp is None:
             timestamp = self.time_provider.now()
 
-        # Select appropriate message template based on status and scan type
-        if status == "late" and minutes_late > 0:
-            message_template = self.late_arrival_template
-        elif scan_type == "time_out":
-            message_template = self.logout_message_template
-        else:
-            message_template = self.login_message_template
+        # Get template from server/cache
+        template = self._get_template_from_server_or_cache(notification_type)
 
         # Generate attendance view link using UUID (not student_number)
-        # Use student_uuid if provided, otherwise fallback to student_id (student_number)
         link_identifier = student_uuid if student_uuid else student_id
         attendance_link = self._generate_attendance_link(link_identifier)
 
+        # Prepare template variables
+        template_vars = {
+            'student_id': student_id,
+            'student_number': student_id,
+            'student_name': student_name or student_id,
+            'time': timestamp.strftime("%I:%M %p"),
+            'date': timestamp.strftime("%B %d, %Y"),
+            'attendance_link': attendance_link,
+            'minutes_late': minutes_late,
+            'school_name': config.get('school_name', 'School')
+        }
+
         # Format message
-        message = message_template.format(
-            student_id=student_id,
-            student_name=student_name or student_id,
-            time=timestamp.strftime("%I:%M %p"),
-            date=timestamp.strftime("%B %d, %Y"),
-            attendance_link=attendance_link,
-            minutes_late=minutes_late,
-        )
+        message = self._format_template_variables(template, **template_vars)
 
         # Add unsubscribe text if enabled
         if self.include_unsubscribe:
@@ -331,6 +519,25 @@ class SMSNotifier:
 
         # Send SMS
         return self.send_sms(parent_phone, message)
+    
+    def _get_notification_type(self, scan_type: str, status: str, minutes_late: int) -> str:
+        """
+        Determine notification type for template/preference lookup.
+        
+        Args:
+            scan_type: 'time_in' or 'time_out'
+            status: 'present', 'late', etc.
+            minutes_late: Minutes late
+        
+        Returns:
+            Notification type string (check_in, check_out, late_arrival, etc.)
+        """
+        if status == "late" and minutes_late > 0:
+            return "late_arrival"
+        elif scan_type == "time_out":
+            return "check_out"
+        else:
+            return "check_in"
 
     def send_sms(self, phone_number: str, message: str) -> bool:
         """
