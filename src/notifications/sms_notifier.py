@@ -77,6 +77,9 @@ class SMSNotifier:
                 - supabase_key: Supabase API key
                 - db_path: Local database path for template cache
         """
+        # Store config for later use
+        self.config = config
+        
         # Time provider for easier testing of cooldown & quiet hours
         self.time_provider = time_provider or TimeProvider()
         self.enabled = config.get("enabled", False)
@@ -507,7 +510,7 @@ class SMSNotifier:
             'date': timestamp.strftime("%B %d, %Y"),
             'attendance_link': attendance_link,
             'minutes_late': minutes_late,
-            'school_name': config.get('school_name', 'School')
+            'school_name': self.config.get('school_name', 'School')
         }
 
         # Format message
