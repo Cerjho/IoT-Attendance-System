@@ -260,7 +260,7 @@ CREATE OR REPLACE FUNCTION should_send_notification(
 RETURNS BOOLEAN AS $$
 DECLARE
     prefs notification_preferences;
-    current_time TIME;
+    check_time TIME;
 BEGIN
     -- Get preferences
     SELECT * INTO prefs
@@ -281,15 +281,15 @@ BEGIN
     
     -- Check quiet hours
     IF prefs.quiet_hours_enabled THEN
-        current_time := CURRENT_TIME;
+        check_time := CURRENT_TIME;
         IF prefs.quiet_hours_start > prefs.quiet_hours_end THEN
             -- Crosses midnight
-            IF current_time >= prefs.quiet_hours_start OR current_time <= prefs.quiet_hours_end THEN
+            IF check_time >= prefs.quiet_hours_start OR check_time <= prefs.quiet_hours_end THEN
                 RETURN FALSE;
             END IF;
         ELSE
             -- Same day
-            IF current_time >= prefs.quiet_hours_start AND current_time <= prefs.quiet_hours_end THEN
+            IF check_time >= prefs.quiet_hours_start AND check_time <= prefs.quiet_hours_end THEN
                 RETURN FALSE;
             END IF;
         END IF;

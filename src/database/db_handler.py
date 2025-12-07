@@ -72,6 +72,9 @@ class AttendanceDatabase:
                 name TEXT,
                 email TEXT,
                 parent_phone TEXT,
+                section_id TEXT,
+                schedule_id TEXT,
+                allowed_session TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """
