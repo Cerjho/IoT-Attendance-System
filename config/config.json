@@ -75,7 +75,6 @@
     "circuit_breaker_threshold": 5,
     "circuit_breaker_timeout": 60,
     "circuit_breaker_success": 2,
-    "recorded_by_teacher_uuid": null,
     "roster_sync": {
       "auto_sync_on_boot": true,
       "sync_time": "06:00",
@@ -113,15 +112,6 @@
     "storage_read_timeout": 30,
     "connectivity_timeout": 3,
     "sms_timeout": 10
-  },
-  "shutdown": {
-    "timeout": 30,
-    "persist_state": true,
-    "state_file": "data/system_state.json"
-  },
-  "metrics": {
-    "enabled": true,
-    "export_format": "prometheus"
   },
   "device_id": "${DEVICE_ID}",
   "alerts": {
