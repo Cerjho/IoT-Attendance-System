@@ -559,6 +559,8 @@ class SMSNotifier:
         try:
             # Format phone number to international format
             formatted_phone = format_phone_number(phone_number)
+            message_preview = message[:50] + "..." if len(message) > 50 else message
+            logger.info(f"📱 SMS Send Started: to={phone_number}→{formatted_phone}, msg_len={len(message)}, preview='{message_preview}'")
             logger.debug(f"Phone formatted: {phone_number} → {formatted_phone}")
 
             # Prepare request payload (SMS-Gate API format)
@@ -577,6 +579,9 @@ class SMSNotifier:
             last_err = None
             for i in range(attempts):
                 try:
+                    if i > 0:
+                        logger.info(f"📱 SMS Retry: attempt {i+1}/{attempts} for {phone_number}")
+                    
                     response = requests.post(
                         url,
                         json=payload,
@@ -595,33 +600,33 @@ class SMSNotifier:
                             message_id = "unknown"
                             
                         logger.info(
-                            f"SMS sent successfully to {phone_number} (Message ID: {message_id})"
+                            f"✅ SMS Sent Successfully: to={phone_number}, msg_id={message_id}, attempt={i+1}/{attempts}, msg_len={len(message)}"
                         )
                         return True
                     else:
                         last_err = f"status={response.status_code} body={response.text}"
                         logger.warning(
-                            f"SMS send failed attempt {i+1}/{attempts}: {last_err}"
+                            f"⚠️ SMS HTTP Error: to={phone_number}, attempt={i+1}/{attempts}, status={response.status_code}, response='{response.text[:100]}'"
                         )
                 except requests.exceptions.SSLError as e:
                     last_err = f"SSL error: {str(e)}"
                     logger.warning(
-                        f"SMS SSL error attempt {i+1}/{attempts} to {phone_number}: {last_err}"
+                        f"⚠️ SMS SSL Error: to={phone_number}, attempt={i+1}/{attempts}, error={str(e)[:100]}"
                     )
                 except requests.exceptions.Timeout as e:
                     last_err = f"Timeout: {str(e)}"
                     logger.warning(
-                        f"SMS timeout attempt {i+1}/{attempts} to {phone_number}: {last_err}"
+                        f"⚠️ SMS Timeout: to={phone_number}, attempt={i+1}/{attempts}, waited=10s"
                     )
                 except requests.exceptions.ConnectionError as e:
                     last_err = f"Connection refused: {str(e)}"
                     logger.warning(
-                        f"SMS connection error attempt {i+1}/{attempts} to {phone_number} (API may be down): {last_err}"
+                        f"⚠️ SMS Connection Error: to={phone_number}, attempt={i+1}/{attempts}, error={str(e)[:100]} (API may be down)"
                     )
                 except Exception as e:
                     last_err = str(e)
                     logger.warning(
-                        f"SMS unexpected error attempt {i+1}/{attempts}: {last_err}"
+                        f"❌ SMS Unexpected Error: to={phone_number}, attempt={i+1}/{attempts}, error={str(e)[:100]}"
                     )
                 if i + 1 < attempts:
                     try:
@@ -631,7 +636,7 @@ class SMSNotifier:
                     except Exception:
                         pass
 
-            logger.error(f"Failed to send SMS after retries: {last_err}")
+            logger.error(f"❌ SMS Failed: to={phone_number}, all {attempts} attempts exhausted, last_error='{last_err}'")
             return False
         except Exception as e:
             logger.error(f"Error sending SMS: {str(e)}")

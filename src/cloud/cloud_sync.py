@@ -209,6 +209,7 @@ class CloudSyncManager:
                 logger.error("Missing student_number in cloud_data")
                 return None
 
+            logger.debug(f"☁️ Looking up student UUID: student_number={student_number}")
             student_url = f"{self.supabase_url}/rest/v1/students?student_number=eq.{student_number}&select=id"
             
             # Student lookup with circuit breaker
@@ -302,13 +303,14 @@ class CloudSyncManager:
                     return None
                     
                 cloud_id = data[0]["id"] if isinstance(data, list) else data.get("id")
+                scan_type = cloud_data.get("time_in") and "login" or "logout"
                 logger.info(
-                    f"Attendance synced to cloud: student {student_number} → UUID {student_uuid}"
+                    f"✅ Attendance Persisted: student={student_number}→{student_uuid}, cloud_id={cloud_id}, date={cloud_data.get('date')}, type={scan_type}"
                 )
                 return str(cloud_id)
             else:
                 logger.error(
-                    f"Cloud insert failed: {response.status_code} - {response.text}"
+                    f"❌ Cloud insert failed: status={response.status_code}, body={response.text[:200]}"
                 )
                 return None
 
@@ -329,6 +331,10 @@ class CloudSyncManager:
         Returns:
             True if sync successful, False otherwise
         """
+        student_id = attendance_data.get("student_id")
+        local_id = attendance_data.get("id")
+        logger.info(f"☁️ Cloud Sync Started: local_id={local_id}, student={student_id}, has_photo={photo_path is not None}")
+        
         if not self.enabled or not self.client:
             # Add to queue for later sync
             self.sync_queue.add_to_queue(
@@ -336,8 +342,8 @@ class CloudSyncManager:
                 attendance_data.get("id"),
                 {"attendance": attendance_data, "photo_path": photo_path},
             )
-            logger.debug(
-                f"Cloud sync disabled - queued attendance ID {attendance_data.get('id')}"
+            logger.info(
+                f"📥 Cloud Sync Queued (disabled): local_id={local_id}, student={student_id}"
             )
             return False
 
@@ -349,7 +355,7 @@ class CloudSyncManager:
                 attendance_data.get("id"),
                 {"attendance": attendance_data, "photo_path": photo_path},
             )
-            logger.debug(f"Offline - queued attendance ID {attendance_data.get('id')}")
+            logger.info(f"📥 Cloud Sync Queued (offline): local_id={local_id}, student={student_id}")
             return False
 
         # Attempt sync
@@ -357,12 +363,17 @@ class CloudSyncManager:
             # Upload photo first if provided
             photo_url = None
             if photo_path and os.path.exists(photo_path):
+                logger.debug(f"☁️ Uploading photo: {photo_path}")
                 from .photo_uploader import PhotoUploader
 
                 uploader = PhotoUploader(self.supabase_url, self.supabase_key)
                 photo_url = uploader.upload_photo(
                     photo_path, attendance_data.get("student_id")
                 )
+                if photo_url:
+                    logger.info(f"✅ Photo uploaded: {photo_url}")
+                else:
+                    logger.warning(f"⚠️ Photo upload failed: {photo_path}")
 
             # Prepare attendance data for cloud (new schema)
             # Parse timestamp into date and time components
@@ -404,26 +415,27 @@ class CloudSyncManager:
                         and os.path.exists(photo_path)
                     ):
                         os.remove(photo_path)
-                        logger.debug(f"Deleted local photo after sync: {photo_path}")
+                        logger.debug(f"🗑️ Deleted local photo after sync: {photo_path}")
                 except Exception as _e:
                     logger.warning(f"Failed to delete local photo {photo_path}: {_e}")
 
                 self._sync_count += 1
                 logger.info(
-                    f"Synced attendance ID {attendance_data.get('id')} to cloud (cloud ID: {cloud_record_id})"
+                    f"✅ Cloud Sync Success: local_id={attendance_data.get('id')}, cloud_id={cloud_record_id}, student={student_id}, photo={photo_url is not None}"
                 )
                 return True
             else:
                 raise Exception("Failed to insert to cloud")
 
         except Exception as e:
-            logger.error(f"Failed to sync attendance: {e}")
+            logger.error(f"❌ Cloud Sync Failed: local_id={local_id}, student={student_id}, error={str(e)[:100]}")
             # Add to queue for retry
             self.sync_queue.add_to_queue(
                 "attendance",
                 attendance_data.get("id"),
                 {"attendance": attendance_data, "photo_path": photo_path},
             )
+            logger.info(f"📥 Cloud Sync Queued (retry): local_id={local_id}")
             return False
 
     def process_sync_queue(self, batch_size: int = 10) -> Dict:
@@ -453,7 +465,7 @@ class CloudSyncManager:
         if not pending:
             return {"processed": 0, "succeeded": 0, "failed": 0}
 
-        logger.info(f"Processing {len(pending)} pending sync records")
+        logger.info(f"📤 Processing sync queue: {len(pending)} pending records, batch_size={batch_size}")
 
         succeeded = 0
         failed = 0
@@ -544,7 +556,7 @@ class CloudSyncManager:
                         succeeded += 1
                         self._sync_count += 1
                         logger.info(
-                            f"Synced queued record {queue_id} (attendance ID {attendance_data.get('id')})"
+                            f"✅ Queue sync success: queue_id={queue_id}, local_id={attendance_data.get('id')}, cloud_id={cloud_record_id}, student={attendance_data.get('student_id')}"
                         )
                     else:
                         raise Exception("Failed to insert to cloud")
@@ -555,7 +567,7 @@ class CloudSyncManager:
                     failed += 1
 
             except Exception as e:
-                logger.error(f"Failed to sync queue record {queue_id}: {e}")
+                logger.error(f"❌ Queue sync failed: queue_id={queue_id}, retry={retry_count+1}/{self.retry_attempts}, error={str(e)[:100]}")
                 self.sync_queue.update_retry_count(queue_id, str(e))
                 failed += 1
 
@@ -564,7 +576,7 @@ class CloudSyncManager:
 
         result = {"processed": len(pending), "succeeded": succeeded, "failed": failed}
 
-        logger.info(f"Sync queue processed: {succeeded} succeeded, {failed} failed")
+        logger.info(f"📊 Sync queue complete: processed={len(pending)}, succeeded={succeeded}, failed={failed}, total_synced={self._sync_count}")
 
         return result
 
