@@ -50,29 +50,36 @@ class QueueDataValidator:
         Returns:
             (is_valid, error_message)
         """
+        logger.debug("🔍 Validating attendance data")
         try:
             # Parse JSON if string
             if isinstance(data, str):
                 try:
                     data_dict = json.loads(data)
+                    logger.debug(f"Parsed JSON data: {len(data)} bytes")
                 except json.JSONDecodeError as e:
+                    logger.warning(f"⚠️ JSON decode failed: {str(e)[:100]}")
                     return False, f"Invalid JSON: {e}"
             elif isinstance(data, dict):
                 data_dict = data
             else:
+                logger.warning(f"❌ Invalid data type: {type(data)}")
                 return False, f"Data must be dict or JSON string, got {type(data)}"
 
             # Check required fields
             for field in QueueDataValidator.ATTENDANCE_SCHEMA["required"]:
                 if field not in data_dict:
+                    logger.warning(f"⚠️ Missing required field: {field}")
                     return False, f"Missing required field: {field}"
             
             # Either student_number or student_id must be present
             if "student_number" not in data_dict and "student_id" not in data_dict:
+                logger.warning("⚠️ Missing student identifier")
                 return False, "Missing student identifier (student_number or student_id)"
             
             # Either date or timestamp must be present
             if "date" not in data_dict and "timestamp" not in data_dict:
+                logger.warning("⚠️ Missing date/time information")
                 return False, "Missing date/time information (date or timestamp required)"
 
             # Check types
@@ -84,19 +91,23 @@ class QueueDataValidator:
             # Validate status value
             status = data_dict.get("status")
             if status not in QueueDataValidator.ATTENDANCE_SCHEMA["status_values"]:
+                logger.warning(f"⚠️ Invalid status: {status}")
                 return False, f"Invalid status value: {status}"
 
             # Validate date format (basic check) - allow None for timestamp-based records
             date = data_dict.get("date", "")
             if date and not (len(date) == 10 and date[4] == "-" and date[7] == "-"):
+                logger.warning(f"⚠️ Invalid date format: {date}")
                 return False, f"Invalid date format (expected YYYY-MM-DD): {date}"
 
             # Validate time format if present
             for time_field in ["time_in", "time_out"]:
                 time_val = data_dict.get(time_field)
                 if time_val and not QueueDataValidator._is_valid_time(time_val):
+                    logger.warning(f"⚠️ Invalid {time_field} format: {time_val}")
                     return False, f"Invalid time format for {time_field} (expected HH:MM:SS): {time_val}"
             
+            logger.debug(f"✅ Validation passed for student: {data_dict.get('student_number') or data_dict.get('student_id')}")
             # Validate UUID format for UUID fields (but skip student_id as it can be student_number)
             # Note: Local queue uses student_id field to store student_number (not UUID)
             # The cloud sync converts student_number to UUID during sync
@@ -114,6 +125,7 @@ class QueueDataValidator:
             return True, None
 
         except Exception as e:
+            logger.error(f"❌ Validation exception: {str(e)[:100]}")
             return False, f"Validation error: {e}"
 
     @staticmethod
@@ -181,11 +193,14 @@ class QueueDataValidator:
         Returns:
             (is_valid, fixed_data, error_message)
         """
+        logger.debug("🔧 Validate and fix: attempting auto-repair")
         # Parse data first
         if isinstance(data, str):
             try:
                 data_dict = json.loads(data)
+                logger.debug("Parsed JSON for fixing")
             except json.JSONDecodeError:
+                logger.warning("⚠️ Cannot fix: invalid JSON")
                 return False, None, "Invalid JSON"
         else:
             data_dict = dict(data)
@@ -196,12 +211,15 @@ class QueueDataValidator:
         # Try validation on sanitized data
         is_valid, error = QueueDataValidator.validate_attendance(data_dict)
         if is_valid:
+            logger.debug("✅ Data already valid, no fixes needed")
             return True, data_dict, None
 
+        logger.info(f"🔧 Attempting to fix: {error}")
         # Try to fix common issues (data_dict already sanitized above)
         try:
             # Fix missing required fields with defaults
             if "student_number" not in data_dict and "student_id" not in data_dict:
+                logger.warning("❌ Cannot fix: missing student identifier")
                 return False, None, "Cannot fix: missing student identifier"
             # date field is optional if timestamp is present
             if "status" not in data_dict:
@@ -212,9 +230,12 @@ class QueueDataValidator:
             # Validate again
             is_valid, error = QueueDataValidator.validate_attendance(data_dict)
             if is_valid:
+                logger.info("✅ Auto-fix successful")
                 return True, data_dict, None
             else:
+                logger.warning(f"⚠️ Auto-fix incomplete: {error}")
                 return False, None, f"Could not fix: {error}"
 
         except Exception as e:
+            logger.error(f"❌ Fix exception: {str(e)[:100]}")
             return False, None, f"Fix attempt failed: {e}"
