@@ -372,8 +372,9 @@ class IoTAttendanceSystem:
         """Scan QR code from frame, returns student_id or None"""
         try:
             # Suppress ZBar warnings during decode
+            # Limit to QR codes only to avoid databar decoder warnings
             with SuppressStderr():
-                decoded_objects = pyzbar.decode(frame)
+                decoded_objects = pyzbar.decode(frame, symbols=[pyzbar.ZBarSymbol.QRCODE])
 
             if decoded_objects:
                 qr_data = decoded_objects[0].data.decode("utf-8")
