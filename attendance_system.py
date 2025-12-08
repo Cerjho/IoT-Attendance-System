@@ -51,7 +51,7 @@ from src.camera import CameraHandler
 from src.cloud import CloudSyncManager
 from src.database import AttendanceDatabase
 from src.database.sync_queue import SyncQueueManager
-from src.face_quality import FaceQualityChecker
+from src.face_quality import FaceQualityChecker, AutoCaptureStateMachine
 from src.hardware import BuzzerController
 from src.hardware.power_button import PowerButtonController
 from src.hardware.rgb_led_controller import RGBLEDController
@@ -106,6 +106,11 @@ class IoTAttendanceSystem:
         # Initialize components
         self.camera = None
         self.face_quality_checker = FaceQualityChecker()
+        self.auto_capture = AutoCaptureStateMachine(
+            quality_checker=self.face_quality_checker,
+            stability_duration=3.0,  # 3 seconds of perfect quality
+            timeout=15.0  # 15 second timeout
+        )
         self.database = AttendanceDatabase("data/attendance.db")
 
         # Initialize new components
@@ -969,38 +974,34 @@ class IoTAttendanceSystem:
 
                 # ===== STATE: CAPTURING =====
                 elif self.state == "CAPTURING":
-                    elapsed = time.time() - capture_start_time
-                    remaining = self.capture_window - elapsed
-
                     # Detect faces in current frame using Haar Cascade
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     faces = self.face_quality_checker.face_cascade.detectMultiScale(
                         gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
                     )
 
-                    if len(faces) > 0:
-                        # Face detected!
-                        if not face_detected:
-                            face_detected = True
-                            self.buzzer.beep("face_detected")
-                            self.rgb_led.show_color(
-                                "face_detected", fade=True, blocking=False
-                            )
-                            print(f"   ✓ Face detected!")
-
-                        # Store best face (largest face)
-                        largest_face = max(faces, key=lambda f: f[2] * f[3])
+                    # Get largest face or None
+                    face_box = max(faces, key=lambda f: f[2] * f[3]) if len(faces) > 0 else None
+                    
+                    # Update auto-capture state machine with quality checks
+                    capture_status = self.auto_capture.update(frame, face_box)
+                    
+                    # Store best face for final capture
+                    if face_box is not None and capture_status["quality_result"] and capture_status["quality_result"]["passed"]:
                         best_face_frame = frame.copy()
-                        best_face_box = largest_face
+                        best_face_box = face_box
 
-                    # Display capture window
+                    # Display capture window with quality feedback
                     if display:
                         # Draw face boxes
-                        for x, y, w, h in faces:
+                        if face_box is not None:
+                            x, y, w, h = face_box
+                            box_color = (0, 255, 0) if capture_status["state"] == "STABLE" else (0, 255, 255)
                             cv2.rectangle(
-                                display_frame, (x, y), (x + w, y + h), (0, 255, 0), 3
+                                display_frame, (x, y), (x + w, y + h), box_color, 3
                             )
-                        # Draw prospective crop region (preview) around largest face if cropping enabled
+                        
+                        # Draw crop preview if enabled
                         if (
                             not self.save_full_frame
                             and self.preview_draw_crop_box
@@ -1021,56 +1022,67 @@ class IoTAttendanceSystem:
                                 (255, 140, 0),
                                 2,
                             )
+                        
+                        # Show quality status
+                        state = capture_status["state"]
+                        message = capture_status["message"]
+                        countdown = capture_status.get("countdown")
+                        
+                        if state == "STABLE" and countdown:
+                            # Quality passed - show countdown
                             cv2.putText(
                                 display_frame,
-                                "CROP PREVIEW",
-                                (px, max(0, py - 10)),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.5,
-                                (255, 140, 0),
-                                1,
-                            )
-
-                        if remaining > 0:
-                            countdown = int(remaining) + 1
-                            status = (
-                                "FACE DETECTED!" if face_detected else "DETECTING..."
-                            )
-                            color = (0, 255, 0) if face_detected else (0, 255, 255)
-
-                            cv2.putText(
-                                display_frame,
-                                f"CAPTURING: {countdown}s",
+                                f"PERFECT! HOLD STILL: {countdown}",
                                 (50, 60),
                                 cv2.FONT_HERSHEY_SIMPLEX,
-                                1.2,
-                                color,
+                                1.0,
+                                (0, 255, 0),
+                                3,
+                            )
+                        elif state == "WAITING":
+                            # Show what's failing
+                            cv2.putText(
+                                display_frame,
+                                "QUALITY CHECK",
+                                (50, 60),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                1.0,
+                                (0, 255, 255),
                                 3,
                             )
                             cv2.putText(
                                 display_frame,
-                                status,
-                                (50, 120),
+                                message[:40],  # Truncate long messages
+                                (50, 110),
                                 cv2.FONT_HERSHEY_SIMPLEX,
-                                1.0,
-                                color,
-                                2,
-                            )
-                            cv2.putText(
-                                display_frame,
-                                f"Student: {current_student_id}",
-                                (50, 170),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.8,
+                                0.7,
                                 (255, 255, 255),
                                 2,
                             )
+                        
+                        cv2.putText(
+                            display_frame,
+                            f"Student: {current_student_id}",
+                            (50, 160),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.8,
+                            (255, 255, 255),
+                            2,
+                        )
 
-                    # Check if capture window expired
-                    if remaining <= 0:
-                        if face_detected and best_face_frame is not None:
-                            # Capture successful
-                            print(f"   📸 Capturing photo...")
+                    # Print quality feedback for user
+                    if capture_status["state"] == "STABLE" and capture_status.get("countdown") == 3:
+                        # Just started stability countdown
+                        print(f"   ✅ All quality checks passed!")
+                        print(f"   ⏱️  Hold still for 3 seconds...")
+                        self.buzzer.beep("face_detected")
+                        self.rgb_led.show_color("face_detected", fade=True, blocking=False)
+                    
+                    # Check if we should capture
+                    if capture_status["should_capture"]:
+                        if best_face_frame is not None and best_face_box is not None:
+                            # Quality validation passed - capture photo
+                            print(f"   📸 Capturing validated photo...")
 
                             # Save photo
                             photo_path = self.capture_face_photo(
@@ -1144,21 +1156,30 @@ class IoTAttendanceSystem:
                                 else:
                                     print(f"   ❌ Failed to upload to database")
                         else:
-                            # No face detected
+                            # Should not happen - state machine said capture but no frame
                             self.buzzer.beep("error")
                             self.rgb_led.show_color("error", fade=True, blocking=False)
-                            print(f"   ❌ No face detected in capture window")
+                            print(f"   ❌ Capture triggered but no valid frame")
+                    
+                    elif capture_status["state"] == "TIMEOUT":
+                        # Quality validation timeout
+                        self.buzzer.beep("error")
+                        self.rgb_led.show_color("error", fade=True, blocking=False)
+                        print(f"   ❌ Timeout: Could not achieve quality for 15 seconds")
+                        if capture_status["quality_result"]:
+                            print(f"   💡 Last issue: {capture_status['message']}")
 
-                            if display:
-                                self._show_message(
-                                    frame,
-                                    "NO FACE DETECTED",
-                                    "Please try again",
-                                    (0, 0, 255),
-                                    duration_ms=2000,
-                                )
-                            else:
-                                time.sleep(2)
+                        if display:
+                            self._show_message(
+                                frame,
+                                "QUALITY TIMEOUT",
+                                f"Issue: {capture_status['message'][:30]}",
+                                (0, 0, 255),
+                                "Please try again",
+                                duration_ms=2000,
+                            )
+                        else:
+                            time.sleep(2)
 
                         # Return to standby
                         print(f"{'='*70}\n")
