@@ -580,30 +580,18 @@ class IoTAttendanceSystem:
                 self.buzzer.beep("success")
                 self.rgb_led.show_color("success", fade=True, blocking=False)
 
-                # Attempt cloud sync if enabled and sync_on_capture is true
-                if self.cloud_sync.enabled and self.cloud_sync.sync_on_capture:
-                    # Get the attendance record we just created
-                    attendance_data = {
-                        "id": record_id,
-                        "student_id": student_id,
-                        "timestamp": datetime.now().isoformat(),
-                        "photo_path": photo_path,
-                        "qr_data": qr_data,
-                        "scan_type": scan_type,
-                        "status": status,
-                    }
+                # Prepare attendance data for both SMS and cloud sync
+                attendance_data = {
+                    "id": record_id,
+                    "student_id": student_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "photo_path": photo_path,
+                    "qr_data": qr_data,
+                    "scan_type": scan_type,
+                    "status": status,
+                }
 
-                    # Try to sync immediately (will queue if offline)
-                    logger.debug(f"Attempting cloud sync for record {record_id} (student: {student_id})")
-                    sync_success = self.cloud_sync.sync_attendance_record(attendance_data, photo_path)
-                    
-                    if sync_success:
-                        logger.info(f"✅ Cloud sync successful for record {record_id}")
-                    else:
-                        logger.warning(f"⚠️ Cloud sync failed for record {record_id}, queued for retry")
-                        logger.debug(f"Record will auto-retry when connectivity restored")
-
-                # Send SMS notification to parent if enabled
+                # Send SMS notification FIRST (faster parent notification)
                 if self.sms_notifier.enabled and self.config.get(
                     "sms_notifications", {}
                 ).get("send_on_capture", True):
@@ -611,7 +599,7 @@ class IoTAttendanceSystem:
                     student_data = self.database.get_student(student_id)
                     if student_data and student_data.get("parent_phone"):
                         logger.info(
-                            f"Sending SMS notification to parent for {student_id}"
+                            f"📱 Sending SMS notification to parent for {student_id}"
                         )
                         # Get UUID for attendance link (prefer UUID over student_number)
                         student_uuid = student_data.get("uuid")
@@ -639,6 +627,18 @@ class IoTAttendanceSystem:
                         logger.debug(
                             f"No parent phone number for student {student_id}, skipping SMS"
                         )
+
+                # Attempt cloud sync AFTER SMS (if enabled and sync_on_capture is true)
+                if self.cloud_sync.enabled and self.cloud_sync.sync_on_capture:
+                    # Try to sync immediately (will queue if offline)
+                    logger.debug(f"☁️ Attempting cloud sync for record {record_id} (student: {student_id})")
+                    sync_success = self.cloud_sync.sync_attendance_record(attendance_data, photo_path)
+                    
+                    if sync_success:
+                        logger.info(f"✅ Cloud sync successful for record {record_id}")
+                    else:
+                        logger.warning(f"⚠️ Cloud sync failed for record {record_id}, queued for retry")
+                        logger.debug(f"Record will auto-retry when connectivity restored")
 
                 return True
             else:
