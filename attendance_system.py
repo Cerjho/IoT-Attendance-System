@@ -717,12 +717,6 @@ class IoTAttendanceSystem:
                         student_id = self.scan_qr_code(frame)
 
                     if student_id:
-                        # Audio and visual feedback for QR detected
-                        self.buzzer.beep("qr_detected")
-                        self.rgb_led.show_color(
-                            "qr_detected", fade=True, blocking=False
-                        )
-
                         # Check if student is in today's roster (from Supabase cache)
                         if self.roster_sync.enabled:
                             student = self.roster_sync.get_cached_student(student_id)
@@ -799,6 +793,12 @@ class IoTAttendanceSystem:
                                 time.sleep(2)
                             
                             continue
+
+                        # QR detected and valid - Audio and visual feedback
+                        self.buzzer.beep("qr_detected")
+                        self.rgb_led.show_color(
+                            "qr_detected", fade=True, blocking=False
+                        )
 
                         # VALIDATE STUDENT SCHEDULE
                         validation_result, validation_details = self.schedule_validator.validate_student_schedule(
