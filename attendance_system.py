@@ -780,7 +780,7 @@ class IoTAttendanceSystem:
                             )
                             
                             self.buzzer.beep("error")
-                            self.rgb_led.set_color("yellow")  # Yellow for duplicate
+                            self.rgb_led.show_color("duplicate", fade=True, blocking=False)  # Show duplicate color
                             
                             if display:
                                 self._show_message(
