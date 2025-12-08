@@ -904,14 +904,14 @@ class IoTAttendanceSystem:
                             f"   Session: {session_display} | Type: {scan_type_display}"
                         )
                         print(f"{'='*70}")
-                        print(f"👤 Starting face detection...")
+                        print(f"👤 Starting face quality validation...")
+                        print(f"   ⏱️  Need 3 seconds of perfect quality (9 checks)")
 
                         self.state = "CAPTURING"
+                        self.auto_capture.start_session()  # Start quality validation state machine
                         current_student_id = student_id
                         current_scan_type = expected_scan_type
                         current_session_name = current_session
-                        capture_start_time = time.time()
-                        face_detected = False
                         best_face_frame = None
                         best_face_box = None
 
@@ -986,10 +986,40 @@ class IoTAttendanceSystem:
                     # Update auto-capture state machine with quality checks
                     capture_status = self.auto_capture.update(frame, face_box)
                     
+                    # DEBUG: Show state
+                    if frame_count % 30 == 0:
+                        print(f"   [DEBUG] State: {capture_status['state']}, Face: {face_box is not None}", flush=True)
+                    
                     # Store best face for final capture
                     if face_box is not None and capture_status["quality_result"] and capture_status["quality_result"]["passed"]:
                         best_face_frame = frame.copy()
                         best_face_box = face_box
+                    
+                    # Print quality feedback for user
+                    state = capture_status["state"]
+                    message = capture_status.get("message", "")
+                    
+                    if state == "STABLE":
+                        countdown = capture_status.get("countdown")
+                        if countdown == 3:
+                            # Just started stability countdown
+                            print(f"   ✅ All quality checks passed!")
+                            print(f"   ⏱️  Hold still for 3 seconds...")
+                            self.buzzer.beep("face_detected")
+                            self.rgb_led.show_color("face_detected", fade=True, blocking=False)
+                        elif countdown in [2, 1]:
+                            # Show countdown progress
+                            print(f"   ⏱️  {countdown}...", flush=True)
+                    
+                    elif state == "WAITING":
+                        # Show what's failing (every 15 frames for faster feedback)
+                        if frame_count % 15 == 0:
+                            if face_box is None:
+                                print(f"   🔍 Waiting for face detection...", flush=True)
+                            else:
+                                quality_result = capture_status.get("quality_result")
+                                if quality_result and not quality_result["passed"]:
+                                    print(f"   ⚠️  {message}", flush=True)
 
                     # Display capture window with quality feedback
                     if display:
