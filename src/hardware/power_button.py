@@ -89,6 +89,7 @@ class PowerButtonController:
         )
         self._monitor_thread.start()
         logger.info("🔘 Power button monitoring started")
+        logger.debug(f"Initial GPIO {self.gpio_pin} state: {'HIGH' if self.GPIO.input(self.gpio_pin) == self.GPIO.HIGH else 'LOW'}")
 
     def stop_monitoring(self):
         """Stop monitoring power button"""
@@ -101,6 +102,27 @@ class PowerButtonController:
     def _monitor_button(self):
         """Monitor button presses in background thread"""
         try:
+            # Startup delay to allow GPIO to stabilize
+            logger.debug("Power button monitor: waiting 2s for GPIO stabilization...")
+            time.sleep(2)
+            
+            # Verify initial state is HIGH (button not pressed)
+            initial_state = self.GPIO.input(self.gpio_pin)
+            if initial_state == self.GPIO.LOW:
+                logger.warning("⚠️ Power button: GPIO reads LOW on startup! Waiting for HIGH state...")
+                # Wait up to 5 seconds for GPIO to go HIGH
+                for i in range(50):
+                    if self.GPIO.input(self.gpio_pin) == self.GPIO.HIGH:
+                        logger.info("✅ Power button: GPIO now HIGH, starting monitoring")
+                        break
+                    time.sleep(0.1)
+                else:
+                    logger.error("❌ Power button: GPIO stuck at LOW - monitoring disabled for safety")
+                    self._monitoring = False
+                    return
+            else:
+                logger.info("✅ Power button: GPIO stable at HIGH, monitoring active")
+            
             last_press_time = 0
             min_press_interval = 2.0  # Minimum 2 seconds between presses
 
