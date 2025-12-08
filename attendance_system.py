@@ -27,16 +27,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# Suppress ZBar decoder warnings by redirecting stderr temporarily
+# Suppress ZBar decoder warnings by redirecting stderr at the OS level
 class SuppressStderr:
     def __enter__(self):
-        self.original_stderr = sys.stderr
-        sys.stderr = open(os.devnull, "w")
+        self.original_stderr_fd = sys.stderr.fileno()
+        self.saved_stderr_fd = os.dup(self.original_stderr_fd)
+        self.devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(self.devnull, self.original_stderr_fd)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stderr.close()
-        sys.stderr = self.original_stderr
+        os.dup2(self.saved_stderr_fd, self.original_stderr_fd)
+        os.close(self.saved_stderr_fd)
+        os.close(self.devnull)
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
