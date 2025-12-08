@@ -566,6 +566,10 @@ class IoTAttendanceSystem:
 
             if record_id:
                 logger.info(f"✅ Attendance uploaded to database (Record ID: {record_id})")
+                
+                # IMMEDIATE FEEDBACK - Success beep and LED before cloud operations
+                self.buzzer.beep("success")
+                self.rgb_led.show_color("success", fade=True, blocking=False)
 
                 # Attempt cloud sync if enabled and sync_on_capture is true
                 if self.cloud_sync.enabled and self.cloud_sync.sync_on_capture:
@@ -1107,10 +1111,7 @@ class IoTAttendanceSystem:
                                     current_session_name,  # Pass schedule session for tracking
                                 ):
                                     self.session_count += 1
-                                    self.buzzer.beep("success")
-                                    self.rgb_led.show_color(
-                                        "success", fade=True, blocking=False
-                                    )
+                                    # Success feedback already sent in upload_to_database()
 
                                     scan_type_msg = (
                                         "LOGIN"
