@@ -557,6 +557,20 @@ class IoTAttendanceSystem:
                 self.database.add_student(student_id, name=None, email=None)
                 logger.info(f"New student registered: {student_id}")
 
+            # Check for duplicate attendance for this session and scan type
+            if schedule_session and self.database.check_duplicate_for_session(
+                student_id, scan_type, schedule_session
+            ):
+                scan_type_label = "login" if scan_type == "time_in" else "logout"
+                session_label = schedule_session.capitalize()
+                logger.warning(
+                    f"⚠️ Duplicate {scan_type_label} prevented: {student_id} already recorded for {session_label} session"
+                )
+                self.buzzer.beep("error")
+                self.rgb_led.set_color("yellow")  # Yellow for duplicate
+                time.sleep(1)
+                return False
+
             # Record attendance locally with schedule session tracking
             logger.debug(f"Recording attendance for {student_id} (type: {scan_type}, status: {status}, session: {schedule_session})")
             record_id = self.database.record_attendance(

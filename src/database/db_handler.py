@@ -316,6 +316,54 @@ class AttendanceDatabase:
                 logger.error(f"Error checking attendance: {str(e)}")
                 return False
 
+    def check_duplicate_for_session(
+        self, student_id: str, scan_type: str, schedule_session: str
+    ) -> bool:
+        """
+        Check if student already has attendance for this scan type and schedule session today
+        
+        Args:
+            student_id: Student identifier
+            scan_type: 'time_in' (login) or 'time_out' (logout)
+            schedule_session: 'morning', 'afternoon', or 'both'
+        
+        Returns:
+            True if duplicate exists (already scanned for this session/type), False otherwise
+        """
+        with self._lock:
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+
+                today = datetime.now().date().isoformat()
+
+                # Check for exact match: same student, same day, same scan type, same session
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM attendance
+                    WHERE student_id = ? 
+                    AND date(timestamp) = ? 
+                    AND scan_type = ?
+                    AND schedule_session = ?
+                """,
+                    (student_id, today, scan_type, schedule_session),
+                )
+
+                count = cursor.fetchone()[0]
+                conn.close()
+
+                if count > 0:
+                    logger.info(
+                        f"Duplicate detected: {student_id} already has {scan_type} for {schedule_session} session today"
+                    )
+                    return True
+                
+                return False
+
+            except Exception as e:
+                logger.error(f"Error checking duplicate for session: {str(e)}")
+                return False
+
     def get_last_scan(self, student_id: str) -> Optional[Dict]:
         """Get student's last scan record for today"""
         with self._lock:
