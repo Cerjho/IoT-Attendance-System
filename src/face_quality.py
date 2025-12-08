@@ -23,21 +23,21 @@ class FaceQualityChecker:
         """Initialize face quality checker with configuration"""
         config = config or {}
 
-        # Quality thresholds
+        # Quality thresholds (optimized for faster capture)
         self.min_face_size = config.get(
             "min_face_size", 80
         )  # Face width minimum (adjusted for typical camera distance)
-        self.center_tolerance_x = config.get("center_tolerance_x", 0.12)  # 12% of width
+        self.center_tolerance_x = config.get("center_tolerance_x", 0.18)  # 18% of width (relaxed)
         self.center_tolerance_y = config.get(
-            "center_tolerance_y", 0.12
-        )  # 12% of height
-        self.max_yaw = config.get("max_yaw", 15.0)  # degrees
-        self.max_pitch = config.get("max_pitch", 15.0)  # degrees
-        self.max_roll = config.get("max_roll", 10.0)  # degrees
+            "center_tolerance_y", 0.18
+        )  # 18% of height (relaxed)
+        self.max_yaw = config.get("max_yaw", 20.0)  # degrees (relaxed)
+        self.max_pitch = config.get("max_pitch", 20.0)  # degrees (relaxed)
+        self.max_roll = config.get("max_roll", 15.0)  # degrees (relaxed)
         self.min_eye_aspect_ratio = config.get("min_eye_aspect_ratio", 0.25)
         self.min_sharpness = config.get("min_sharpness", 80.0)  # Laplacian variance
-        self.min_brightness = config.get("min_brightness", 70)
-        self.max_brightness = config.get("max_brightness", 180)
+        self.min_brightness = config.get("min_brightness", 60)  # Lowered for varying lighting
+        self.max_brightness = config.get("max_brightness", 190)  # Raised for varying lighting
         self.max_mouth_openness = config.get("max_mouth_openness", 0.5)
 
         # Load cascade classifiers
@@ -340,7 +340,7 @@ class AutoCaptureStateMachine:
     def __init__(
         self,
         quality_checker: FaceQualityChecker,
-        stability_duration: float = 3.0,
+        stability_duration: float = 2.0,
         timeout: float = 15.0,
     ):
         """
@@ -348,7 +348,7 @@ class AutoCaptureStateMachine:
 
         Args:
             quality_checker: FaceQualityChecker instance
-            stability_duration: Seconds of perfect stability required (default 3)
+            stability_duration: Seconds of perfect stability required (default 2)
             timeout: Maximum seconds to wait for capture (default 15)
         """
         self.quality_checker = quality_checker

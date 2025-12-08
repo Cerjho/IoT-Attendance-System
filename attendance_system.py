@@ -111,7 +111,7 @@ class IoTAttendanceSystem:
         self.face_quality_checker = FaceQualityChecker()
         self.auto_capture = AutoCaptureStateMachine(
             quality_checker=self.face_quality_checker,
-            stability_duration=3.0,  # 3 seconds of perfect quality
+            stability_duration=2.0,  # 2 seconds of perfect quality (optimized for speed)
             timeout=15.0  # 15 second timeout
         )
         self.database = AttendanceDatabase("data/attendance.db")
