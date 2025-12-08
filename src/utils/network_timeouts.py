@@ -37,7 +37,12 @@ class NetworkTimeouts:
         self.sms_timeout = config.get("sms_timeout", 10)
 
         logger.info(
-            f"Network timeouts: connect={self.connect_timeout}s, read={self.read_timeout}s"
+            f"⏱️  Network timeouts initialized: connect={self.connect_timeout}s, read={self.read_timeout}s"
+        )
+        logger.debug(
+            f"Service timeouts: Supabase({self.supabase_connect}s/{self.supabase_read}s), "
+            f"Storage({self.storage_connect}s/{self.storage_read}s), "
+            f"Connectivity({self.connectivity_timeout}s), SMS({self.sms_timeout}s)"
         )
 
     def get_supabase_timeout(self) -> Tuple[int, int]:
@@ -47,6 +52,7 @@ class NetworkTimeouts:
         Returns:
             (connect_timeout, read_timeout)
         """
+        logger.debug(f"Supabase timeout: ({self.supabase_connect}s, {self.supabase_read}s)")
         return (self.supabase_connect, self.supabase_read)
 
     def get_storage_timeout(self) -> Tuple[int, int]:
@@ -56,6 +62,7 @@ class NetworkTimeouts:
         Returns:
             (connect_timeout, read_timeout)
         """
+        logger.debug(f"Storage timeout: ({self.storage_connect}s, {self.storage_read}s)")
         return (self.storage_connect, self.storage_read)
 
     def get_connectivity_timeout(self) -> int:
@@ -65,6 +72,7 @@ class NetworkTimeouts:
         Returns:
             timeout in seconds
         """
+        logger.debug(f"Connectivity timeout: {self.connectivity_timeout}s")
         return self.connectivity_timeout
 
     def get_sms_timeout(self) -> int:
@@ -74,6 +82,7 @@ class NetworkTimeouts:
         Returns:
             timeout in seconds
         """
+        logger.debug(f"SMS timeout: {self.sms_timeout}s")
         return self.sms_timeout
 
     def get_timeout_dict(self) -> Dict[str, int]:
@@ -83,7 +92,7 @@ class NetworkTimeouts:
         Returns:
             dict with all timeout settings
         """
-        return {
+        timeout_dict = {
             "connect_timeout": self.connect_timeout,
             "read_timeout": self.read_timeout,
             "supabase_connect": self.supabase_connect,
@@ -93,6 +102,8 @@ class NetworkTimeouts:
             "connectivity_timeout": self.connectivity_timeout,
             "sms_timeout": self.sms_timeout,
         }
+        logger.debug(f"All timeouts retrieved: {timeout_dict}")
+        return timeout_dict
 
 
 # Default timeout configuration

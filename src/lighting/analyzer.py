@@ -27,6 +27,11 @@ class LightingAnalyzer:
         self.config = config or {}
         self.brightness_threshold = self.config.get("brightness_threshold", 80)
         self.contrast_threshold = self.config.get("contrast_threshold", 40)
+        
+        logger.info(
+            f"💡 Lighting analyzer initialized: brightness_threshold={self.brightness_threshold}, "
+            f"contrast_threshold={self.contrast_threshold}"
+        )
 
     def analyze_frame(self, frame: np.ndarray) -> Dict:
         """
@@ -78,27 +83,45 @@ class LightingAnalyzer:
             "quality_score": quality_score,
         }
 
+        # Log with quality indicators
+        quality_emoji = "✅" if quality_score >= 0.7 else "⚠️" if quality_score >= 0.4 else "❌"
         logger.debug(
-            f"Lighting analysis: brightness={brightness:.1f}, contrast={contrast:.1f}, quality={quality_score:.2f}"
+            f"{quality_emoji} Lighting: brightness={brightness:.1f}, contrast={contrast:.1f}, "
+            f"quality={quality_score:.2f}, low_light={is_low_light}, high_light={is_high_light}, "
+            f"low_contrast={is_low_contrast}"
         )
+        
+        # Log warnings for poor conditions
+        if is_low_light:
+            logger.warning(f"⚠️ Low light detected: brightness={brightness:.1f} < {self.brightness_threshold}")
+        if is_high_light:
+            logger.warning(f"⚠️ High light detected: brightness={brightness:.1f} > 200")
+        if is_low_contrast:
+            logger.warning(f"⚠️ Low contrast detected: contrast={contrast:.1f} < {self.contrast_threshold}")
 
         return result
 
     def _calculate_brightness_score(self, brightness: float) -> float:
         """Calculate brightness quality score (0-1)"""
         if 100 <= brightness <= 180:
-            return 1.0
+            score = 1.0
         elif brightness < 100:
-            return max(0.0, brightness / 100.0)
+            score = max(0.0, brightness / 100.0)
         else:  # brightness > 180
-            return max(0.0, 1.0 - (brightness - 180) / 75.0)
+            score = max(0.0, 1.0 - (brightness - 180) / 75.0)
+        
+        logger.debug(f"Brightness score: {score:.2f} (brightness={brightness:.1f})")
+        return score
 
     def _calculate_contrast_score(self, contrast: float) -> float:
         """Calculate contrast quality score (0-1)"""
         if contrast >= 50:
-            return 1.0
+            score = 1.0
         else:
-            return max(0.0, contrast / 50.0)
+            score = max(0.0, contrast / 50.0)
+        
+        logger.debug(f"Contrast score: {score:.2f} (contrast={contrast:.1f})")
+        return score
 
     def suggest_exposure_adjustment(
         self, brightness: float, current_exposure: int = 10000
@@ -117,6 +140,9 @@ class LightingAnalyzer:
 
         if abs(brightness - target_brightness) < 20:
             # Close enough, no adjustment needed
+            logger.debug(
+                f"✅ Exposure OK: brightness={brightness:.1f} near target={target_brightness}"
+            )
             return current_exposure
 
         # Calculate adjustment ratio
@@ -131,8 +157,12 @@ class LightingAnalyzer:
         # Clamp to reasonable exposure range (1ms to 100ms)
         new_exposure = max(1000, min(100000, new_exposure))
 
-        logger.debug(
-            f"Exposure adjustment: {current_exposure} -> {new_exposure} µs (brightness {brightness:.1f})"
+        logger.info(
+            f"🔆 Exposure adjustment: {current_exposure}µs → {new_exposure}µs "
+            f"(brightness {brightness:.1f} → target {target_brightness})"
         )
+        
+        if new_exposure != int(current_exposure * ratio):
+            logger.debug(f"Exposure clamped to safe range [1000, 100000]µs")
 
         return new_exposure
