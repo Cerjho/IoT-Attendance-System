@@ -31,10 +31,17 @@ class ScheduleSync:
         self.config = config
         self.db_path = db_path
         
-        # Get Supabase credentials
-        cloud_config = config.get("cloud", {}).get("supabase", {})
-        self.supabase_url = cloud_config.get("url", "")
-        self.supabase_key = cloud_config.get("api_key", "")
+        # Get Supabase credentials - try cloud config first, then cloud.supabase
+        cloud_config = config.get("cloud", {})
+        
+        # Support both config.cloud.url and config.cloud.supabase.url structures
+        if "url" in cloud_config:
+            self.supabase_url = cloud_config.get("url", "")
+            self.supabase_key = cloud_config.get("api_key", "")
+        else:
+            supabase_config = cloud_config.get("supabase", {})
+            self.supabase_url = supabase_config.get("url", "")
+            self.supabase_key = supabase_config.get("api_key", "")
         
         # Validate credentials
         if not self.supabase_url or self.supabase_url.startswith("${"):
@@ -45,6 +52,7 @@ class ScheduleSync:
             self.enabled = False
         else:
             self.enabled = True
+            logger.info(f"Schedule sync enabled with URL: {self.supabase_url[:30]}...")
             
         # Initialize local database
         self._init_local_db()
