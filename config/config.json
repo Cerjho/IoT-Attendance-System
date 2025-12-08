@@ -120,11 +120,11 @@
     "alert_file": "data/logs/alerts.json",
     "cooldown_minutes": 5,
     "sms": {
-      "enabled": false,
+      "enabled": true,
       "admin_numbers": []
     },
     "webhook": {
-      "enabled": false,
+      "enabled": true,
       "url": "",
       "auth_header": ""
     }
@@ -217,7 +217,7 @@
     "hold_duration_ms": 2000
   },
   "power_button": {
-    "enabled": false,
+    "enabled": true,
     "gpio_pin": 17,
     "wake_gpio_pin": 3,
     "short_press_seconds": 3,
@@ -244,7 +244,7 @@
     "signed_url_expiry_hours": 24,
     "attendance_view_url": "https://mabini-hs-attendance.vercel.app/Parents/View.html?student_id={student_id}",
     "quiet_hours": {
-      "enabled": false,
+      "enabled": true,
       "start": "22:00",
       "end": "06:00"
     },
