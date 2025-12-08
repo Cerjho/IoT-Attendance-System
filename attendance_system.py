@@ -1071,7 +1071,9 @@ class IoTAttendanceSystem:
                         )
 
                     # Print quality feedback for user
-                    if capture_status["state"] == "STABLE":
+                    state = capture_status["state"]
+                    
+                    if state == "STABLE":
                         countdown = capture_status.get("countdown")
                         if countdown == 3:
                             # Just started stability countdown
@@ -1082,15 +1084,17 @@ class IoTAttendanceSystem:
                         elif countdown in [2, 1]:
                             # Show countdown progress
                             print(f"   ⏱️  {countdown}...", flush=True)
-                    elif capture_status["state"] == "WAITING":
-                        # Show what's failing (throttle to every 30 frames to avoid spam)
-                        if frame_count % 30 == 0:
+                    
+                    elif state == "WAITING":
+                        # Show what's failing (every 15 frames for faster feedback)
+                        if frame_count % 15 == 0:
                             if face_box is None:
                                 print(f"   🔍 Waiting for face detection...", flush=True)
                             else:
                                 quality_result = capture_status.get("quality_result")
-                                if quality_result:
-                                    print(f"   🔍 Quality check: {capture_status['message']}", flush=True)
+                                if quality_result and not quality_result["passed"]:
+                                    reason = capture_status.get('message', 'Unknown issue')
+                                    print(f"   ⚠️  {reason}", flush=True)
                     
                     # Check if we should capture
                     if capture_status["should_capture"]:
