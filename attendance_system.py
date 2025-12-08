@@ -1071,12 +1071,26 @@ class IoTAttendanceSystem:
                         )
 
                     # Print quality feedback for user
-                    if capture_status["state"] == "STABLE" and capture_status.get("countdown") == 3:
-                        # Just started stability countdown
-                        print(f"   ✅ All quality checks passed!")
-                        print(f"   ⏱️  Hold still for 3 seconds...")
-                        self.buzzer.beep("face_detected")
-                        self.rgb_led.show_color("face_detected", fade=True, blocking=False)
+                    if capture_status["state"] == "STABLE":
+                        countdown = capture_status.get("countdown")
+                        if countdown == 3:
+                            # Just started stability countdown
+                            print(f"   ✅ All quality checks passed!")
+                            print(f"   ⏱️  Hold still for 3 seconds...")
+                            self.buzzer.beep("face_detected")
+                            self.rgb_led.show_color("face_detected", fade=True, blocking=False)
+                        elif countdown in [2, 1]:
+                            # Show countdown progress
+                            print(f"   ⏱️  {countdown}...", flush=True)
+                    elif capture_status["state"] == "WAITING":
+                        # Show what's failing (throttle to every 30 frames to avoid spam)
+                        if frame_count % 30 == 0:
+                            if face_box is None:
+                                print(f"   🔍 Waiting for face detection...", flush=True)
+                            else:
+                                quality_result = capture_status.get("quality_result")
+                                if quality_result:
+                                    print(f"   🔍 Quality check: {capture_status['message']}", flush=True)
                     
                     # Check if we should capture
                     if capture_status["should_capture"]:
