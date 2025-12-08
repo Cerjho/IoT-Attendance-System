@@ -557,21 +557,8 @@ class IoTAttendanceSystem:
                 self.database.add_student(student_id, name=None, email=None)
                 logger.info(f"New student registered: {student_id}")
 
-            # Check for duplicate attendance for this session and scan type
-            if schedule_session and self.database.check_duplicate_for_session(
-                student_id, scan_type, schedule_session
-            ):
-                scan_type_label = "login" if scan_type == "time_in" else "logout"
-                session_label = schedule_session.capitalize()
-                logger.warning(
-                    f"⚠️ Duplicate {scan_type_label} prevented: {student_id} already recorded for {session_label} session"
-                )
-                self.buzzer.beep("error")
-                self.rgb_led.set_color("yellow")  # Yellow for duplicate
-                time.sleep(1)
-                return False
-
             # Record attendance locally with schedule session tracking
+            # Note: Duplicate check is done earlier in QR scan validation
             logger.debug(f"Recording attendance for {student_id} (type: {scan_type}, status: {status}, session: {schedule_session})")
             record_id = self.database.record_attendance(
                 student_id, photo_path, qr_data, scan_type, status, schedule_session
@@ -779,6 +766,35 @@ class IoTAttendanceSystem:
                         schedule_info = self.schedule_manager.get_schedule_info()
                         expected_scan_type = schedule_info["expected_scan_type"]
                         current_session = schedule_info["current_session"]
+
+                        # CHECK FOR DUPLICATE ATTENDANCE (per session and scan type)
+                        if current_session != "unknown" and self.database.check_duplicate_for_session(
+                            student_id, expected_scan_type, current_session
+                        ):
+                            scan_type_label = "LOGIN" if expected_scan_type == "time_in" else "LOGOUT"
+                            session_label = current_session.upper()
+                            
+                            print(f"   ⚠️  DUPLICATE: Already {scan_type_label} for {session_label} session")
+                            logger.warning(
+                                f"Duplicate {expected_scan_type} prevented: {student_id} already recorded for {current_session} session"
+                            )
+                            
+                            self.buzzer.beep("error")
+                            self.rgb_led.set_color("yellow")  # Yellow for duplicate
+                            
+                            if display:
+                                self._show_message(
+                                    display_frame,
+                                    f"ALREADY {scan_type_label}!",
+                                    f"Student: {student_id}",
+                                    (0, 165, 255),  # Orange color
+                                    f"Session: {session_label}",
+                                    duration_ms=2000,
+                                )
+                            else:
+                                time.sleep(2)
+                            
+                            continue
 
                         # VALIDATE STUDENT SCHEDULE
                         validation_result, validation_details = self.schedule_validator.validate_student_schedule(
