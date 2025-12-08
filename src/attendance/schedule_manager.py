@@ -207,9 +207,14 @@ class ScheduleManager:
         logger.debug("Schedule configuration validated successfully")
 
     def _parse_time(self, time_str: str) -> time:
-        """Parse time string (HH:MM) to time object"""
+        """Parse time string (HH:MM or HH:MM:SS) to time object"""
         try:
-            return datetime.strptime(time_str, "%H:%M").time()
+            # Try HH:MM:SS format first (server schedule format)
+            if time_str.count(':') == 2:
+                return datetime.strptime(time_str, "%H:%M:%S").time()
+            # Fall back to HH:MM format (config file format)
+            else:
+                return datetime.strptime(time_str, "%H:%M").time()
         except Exception as e:
             logger.error(f"Error parsing time '{time_str}': {e}")
             return time(0, 0)
