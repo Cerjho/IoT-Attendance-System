@@ -243,13 +243,6 @@
     "use_signed_urls": true,
     "signed_url_expiry_hours": 24,
     "attendance_view_url": "https://mabini-hs-attendance.vercel.app/Parents/View.html?student_id={student_id}",
-    "webhook": {
-      "enabled": false,
-      "url": "",
-      "auth_header": "",
-      "timeout": 10,
-      "on_failure_only": true
-    },
     "quiet_hours": {
       "enabled": true,
       "start": "22:00",
