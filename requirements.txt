@@ -27,6 +27,9 @@ RPi.GPIO==0.7.1
 # Networking
 netifaces==0.11.0
 
+# Web Servers (Phase 3 Robustness)
+flask==3.1.2
+
 # Optional: Testing
 pytest==7.4.3
 pytest-cov==4.1.0
