@@ -27,26 +27,52 @@ def format_phone_number(phone: str) -> str:
         phone: Phone number in various formats (09xx, 639xx, +639xx)
 
     Returns:
-        Phone number in +63 format
+        Phone number in +63 format (E.164 standard: +63XXXXXXXXXX where X is 10 digits)
     """
-    # Remove spaces, dashes, parentheses
-    phone = phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-
-    # Convert 09xx to +639xx
+    # Remove spaces, dashes, parentheses, and any non-digit characters except leading +
+    original = phone
+    phone = phone.strip()
+    has_plus = phone.startswith("+")
+    phone = "".join(c for c in phone if c.isdigit())
+    
+    # Handle different formats
     if phone.startswith("09"):
-        return "+63" + phone[1:]
-
-    # Convert 639xx to +639xx
-    if phone.startswith("63") and not phone.startswith("+63"):
-        return "+" + phone
-
-    # Already in +63 format
-    if phone.startswith("+63"):
-        return phone
-
-    # Unknown format, return as-is
-    logger.warning(f"Unknown phone format: {phone}")
-    return phone
+        # 09XXXXXXXXX (11 digits) → +639XXXXXXXXX (13 chars total)
+        if len(phone) == 11:
+            formatted = "+63" + phone[1:]
+        elif len(phone) == 12:
+            # Extra digit - try to fix: 091231231123 → +639123123112 (take first 11)
+            logger.warning(f"Phone has 12 digits (expected 11): {original} → using first 11 digits")
+            phone = phone[:11]
+            formatted = "+63" + phone[1:]
+        else:
+            logger.warning(f"Phone starting with 09 has unusual length {len(phone)}: {original}")
+            formatted = "+63" + phone[1:]
+    elif phone.startswith("63"):
+        # 639XXXXXXXXX (12 digits) → +639XXXXXXXXX
+        if len(phone) == 12:
+            formatted = "+" + phone
+        else:
+            logger.warning(f"Phone starting with 63 has unusual length {len(phone)}: {original}")
+            formatted = "+" + phone
+    elif has_plus and phone.startswith("63"):
+        # Already +639XXXXXXXXX
+        if len(phone) == 12:
+            formatted = "+" + phone
+        else:
+            logger.warning(f"Phone with +63 has unusual length {len(phone)}: {original}")
+            formatted = "+" + phone
+    else:
+        # Unknown format - assume it's local 9XXXXXXXXX (10 digits) and add +63
+        logger.warning(f"Unknown phone format, assuming local: {original}")
+        formatted = "+63" + phone
+    
+    # Validate final format: +63 followed by 10 digits (13 chars total)
+    if len(formatted) != 13 or not formatted[3:].isdigit():
+        logger.warning(f"Final phone format may be invalid: {original} → {formatted} (expected 13 chars, got {len(formatted)})")
+    
+    logger.debug(f"Phone formatted: {original} → {formatted}")
+    return formatted
 
 
 class TimeProvider:

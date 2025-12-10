@@ -255,6 +255,29 @@ class RosterSyncManager:
                 last_name = student.get("last_name", "")
                 email = student.get("email")
                 parent_phone = student.get("parent_guardian_contact")
+                
+                # Clean up phone number format (remove extra digits, spaces, etc.)
+                if parent_phone:
+                    # Remove spaces, dashes, parentheses
+                    parent_phone = parent_phone.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+                    # Keep only digits and leading +
+                    cleaned = "".join(c for c in parent_phone if c.isdigit() or (c == "+" and parent_phone.index(c) == 0))
+                    
+                    # Fix common issues
+                    if cleaned.startswith("09") and len(cleaned) > 11:
+                        # 091231231123 (12 digits) → 09123123112 (11 digits - remove last digit)
+                        cleaned = cleaned[:11]
+                        logger.debug(f"Trimmed phone {parent_phone} → {cleaned} for student {student_number}")
+                    elif cleaned.startswith("639") and len(cleaned) > 12:
+                        # 6391231231123 (13 digits) → 639123123112 (12 digits)
+                        cleaned = cleaned[:12]
+                        logger.debug(f"Trimmed phone {parent_phone} → {cleaned} for student {student_number}")
+                    elif cleaned.startswith("+639") and len(cleaned) > 13:
+                        # +6391231231123 (14 chars) → +639123123112 (13 chars)
+                        cleaned = cleaned[:13]
+                        logger.debug(f"Trimmed phone {parent_phone} → {cleaned} for student {student_number}")
+                    
+                    parent_phone = cleaned if cleaned else parent_phone
 
                 if not student_number:
                     continue

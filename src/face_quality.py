@@ -25,20 +25,20 @@ class FaceQualityChecker:
 
         # Quality thresholds (optimized for faster capture)
         self.min_face_size = config.get(
-            "min_face_size", 80
-        )  # Face width minimum (adjusted for typical camera distance)
-        self.center_tolerance_x = config.get("center_tolerance_x", 0.18)  # 18% of width (relaxed)
+            "min_face_size", 60
+        )  # Face width minimum (relaxed for easier capture)
+        self.center_tolerance_x = config.get("center_tolerance_x", 0.25)  # 25% of width (more relaxed)
         self.center_tolerance_y = config.get(
-            "center_tolerance_y", 0.18
-        )  # 18% of height (relaxed)
-        self.max_yaw = config.get("max_yaw", 20.0)  # degrees (relaxed)
-        self.max_pitch = config.get("max_pitch", 20.0)  # degrees (relaxed)
-        self.max_roll = config.get("max_roll", 15.0)  # degrees (relaxed)
-        self.min_eye_aspect_ratio = config.get("min_eye_aspect_ratio", 0.25)
-        self.min_sharpness = config.get("min_sharpness", 80.0)  # Laplacian variance
-        self.min_brightness = config.get("min_brightness", 60)  # Lowered for varying lighting
-        self.max_brightness = config.get("max_brightness", 190)  # Raised for varying lighting
-        self.max_mouth_openness = config.get("max_mouth_openness", 0.5)
+            "center_tolerance_y", 0.25
+        )  # 25% of height (more relaxed)
+        self.max_yaw = config.get("max_yaw", 35.0)  # degrees (very relaxed)
+        self.max_pitch = config.get("max_pitch", 35.0)  # degrees (very relaxed)
+        self.max_roll = config.get("max_roll", 80.0)  # degrees (very relaxed for rotated cameras)
+        self.min_eye_aspect_ratio = config.get("min_eye_aspect_ratio", 0.18)
+        self.min_sharpness = config.get("min_sharpness", 40.0)  # Laplacian variance (very relaxed)
+        self.min_brightness = config.get("min_brightness", 40)  # Very relaxed for poor lighting
+        self.max_brightness = config.get("max_brightness", 220)  # Very relaxed for bright lighting
+        self.max_mouth_openness = config.get("max_mouth_openness", 0.6)
 
         # Load cascade classifiers
         cascade_path = cv2.data.haarcascades
@@ -123,15 +123,16 @@ class FaceQualityChecker:
         }
 
     def _check_face_count(self, frame: np.ndarray) -> Dict:
-        """Check that exactly 1 face is detected"""
+        """Check that at least 1 face is detected (allow background faces, we use largest)"""
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
-        passed = len(faces) == 1
+        # Allow 1-2 faces (main person + possible reflection/background)
+        passed = 1 <= len(faces) <= 2
         return {
             "passed": passed,
-            "score": 1.0 if passed else 0.0,
+            "score": 1.0 if len(faces) == 1 else 0.8,  # Slight penalty for multiple
             "value": len(faces),
-            "reason": f"Detected {len(faces)} faces (need exactly 1)",
+            "reason": f"Detected {len(faces)} face(s)" if passed else f"Detected {len(faces)} faces (need 1-2)",
         }
 
     def _check_face_size(self, face_box: Tuple[int, int, int, int]) -> Dict:
@@ -317,11 +318,11 @@ class FaceQualityChecker:
         std_dev = np.std(gray_roi)
         dark_pixels = np.sum(gray_roi < 50)
         dark_ratio = dark_pixels / gray_roi.size
-        uniformity_ok = std_dev < 40
-        dark_ok = dark_ratio < 0.20
+        uniformity_ok = std_dev < 70
+        dark_ok = dark_ratio < 0.40
         passed = uniformity_ok and dark_ok
-        uniformity_score = 1.0 - min(1.0, std_dev / 40)
-        dark_score = 1.0 - min(1.0, dark_ratio / 0.20)
+        uniformity_score = 1.0 - min(1.0, std_dev / 70)
+        dark_score = 1.0 - min(1.0, dark_ratio / 0.40)
         score = (uniformity_score + dark_score) / 2
         return {
             "passed": passed,
@@ -340,8 +341,8 @@ class AutoCaptureStateMachine:
     def __init__(
         self,
         quality_checker: FaceQualityChecker,
-        stability_duration: float = 2.0,
-        timeout: float = 15.0,
+        stability_duration: float = 1.5,
+        timeout: float = 20.0,
     ):
         """
         Initialize auto-capture state machine
