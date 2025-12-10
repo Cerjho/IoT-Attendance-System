@@ -591,7 +591,7 @@ class IoTAttendanceSystem:
                     "status": status,
                 }
 
-                # Send SMS notification FIRST (faster parent notification)
+                # Send SMS notification in background thread (non-blocking for faster student flow)
                 if self.sms_notifier.enabled and self.config.get(
                     "sms_notifications", {}
                 ).get("send_on_capture", True):
@@ -599,30 +599,36 @@ class IoTAttendanceSystem:
                     student_data = self.database.get_student(student_id)
                     if student_data and student_data.get("parent_phone"):
                         logger.info(
-                            f"📱 Sending SMS notification to parent for {student_id}"
+                            f"📱 Queueing SMS notification to parent for {student_id}"
                         )
                         # Get UUID for attendance link (prefer UUID over student_number)
                         student_uuid = student_data.get("uuid")
                         
-                        logger.debug(f"Preparing SMS for {student_id} to {student_data.get('parent_phone')}")
+                        logger.debug(f"Starting background SMS thread for {student_id} to {student_data.get('parent_phone')}")
                         
-                        sms_sent = self.sms_notifier.send_attendance_notification(
-                            student_id=student_id,
-                            student_name=student_data.get("name"),
-                            parent_phone=student_data.get("parent_phone"),
-                            timestamp=datetime.now(),
-                            scan_type=attendance_data.get("scan_type", "time_in"),
-                            student_uuid=student_uuid,
-                        )
-                        if sms_sent:
-                            logger.info(
-                                f"✅ SMS notification sent successfully to parent of {student_id}"
+                        # Send SMS in background thread - don't block student flow
+                        def send_sms_async():
+                            sms_sent = self.sms_notifier.send_attendance_notification(
+                                student_id=student_id,
+                                student_name=student_data.get("name"),
+                                parent_phone=student_data.get("parent_phone"),
+                                timestamp=datetime.now(),
+                                scan_type=attendance_data.get("scan_type", "time_in"),
+                                student_uuid=student_uuid,
                             )
-                        else:
-                            logger.warning(
-                                f"⚠️ SMS failed for {student_id} - attendance recorded locally"
-                            )
-                            logger.debug(f"Attendance is saved, SMS can be resent manually if needed")
+                            if sms_sent:
+                                logger.info(
+                                    f"✅ SMS notification sent successfully to parent of {student_id}"
+                                )
+                            else:
+                                logger.warning(
+                                    f"⚠️ SMS failed for {student_id} - attendance recorded locally"
+                                )
+                                logger.debug(f"Attendance is saved, SMS can be resent manually if needed")
+                        
+                        sms_thread = threading.Thread(target=send_sms_async, daemon=True, name=f"SMS-{student_id}")
+                        sms_thread.start()
+                        logger.debug(f"SMS thread started for {student_id}, continuing with student flow")
                     else:
                         logger.debug(
                             f"No parent phone number for student {student_id}, skipping SMS"
