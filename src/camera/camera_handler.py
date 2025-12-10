@@ -69,6 +69,11 @@ class CameraHandler:
         self.last_health_check = None
         self.consecutive_failures = 0
         self.recovery_mode = False
+        
+        # Periodic refresh for AE/AWB recalibration (prevents exposure lock during standby)
+        self.refresh_interval = 300  # 5 minutes
+        self.last_refresh_time = None
+        self.frames_since_refresh = 0
 
     def start(self) -> bool:
         """
@@ -235,6 +240,9 @@ class CameraHandler:
         """
         # Periodic health check
         self._check_health()
+        
+        # Periodic camera refresh to prevent AE/AWB lock during standby
+        self._periodic_refresh()
         
         if not self.is_open:
             if self.recovery_mode:
@@ -455,3 +463,72 @@ class CameraHandler:
             "consecutive_failures": self.consecutive_failures,
             "recovery_mode": self.recovery_mode,
         }
+    
+    def _periodic_refresh(self):
+        """
+        Periodically refresh camera to prevent auto-exposure lock during standby.
+        Flushes buffer and reads fresh frames to force AE/AWB recalibration.
+        """
+        current_time = time.time()
+        
+        # Initialize timer on first call
+        if self.last_refresh_time is None:
+            self.last_refresh_time = current_time
+            return
+        
+        # Check if refresh interval elapsed
+        if current_time - self.last_refresh_time >= self.refresh_interval:
+            logger.debug(f"🔄 Periodic camera refresh triggered (idle for {int(current_time - self.last_refresh_time)}s)")
+            
+            # Flush buffer by reading and discarding frames
+            if self.use_picamera2 and self.picam2:
+                # Picamera2: capture multiple frames to force AE/AWB update
+                for i in range(10):
+                    try:
+                        _ = self.picam2.capture_array()
+                    except:
+                        pass
+                logger.debug("   Flushed Picamera2 buffer (10 frames)")
+            
+            elif self.cap is not None:
+                # OpenCV: flush buffer and allow AE to readjust
+                for i in range(10):
+                    try:
+                        self.cap.grab()  # Fast frame grab without decode
+                    except:
+                        pass
+                logger.debug("   Flushed OpenCV buffer (10 frames)")
+            
+            self.last_refresh_time = current_time
+            self.frames_since_refresh = 0
+            logger.debug("   ✅ Camera refresh complete (AE/AWB recalibrated)")
+        else:
+            self.frames_since_refresh += 1
+    
+    def flush_buffer(self, num_frames: int = 10):
+        """
+        Manually flush camera buffer by reading and discarding frames.
+        Useful for clearing stale frames before critical operations like QR scanning.
+        
+        Args:
+            num_frames: Number of frames to flush (default: 10)
+        """
+        if not self.is_open:
+            return
+        
+        try:
+            if self.use_picamera2 and self.picam2:
+                for _ in range(num_frames):
+                    try:
+                        _ = self.picam2.capture_array()
+                    except:
+                        pass
+            elif self.cap is not None:
+                for _ in range(num_frames):
+                    try:
+                        self.cap.grab()
+                    except:
+                        pass
+            logger.debug(f"🗑️  Flushed {num_frames} frames from camera buffer")
+        except Exception as e:
+            logger.warning(f"Error flushing buffer: {e}")

@@ -372,21 +372,47 @@ class IoTAttendanceSystem:
         cv2.waitKey(duration_ms)
 
     def scan_qr_code(self, frame) -> str:
-        """Scan QR code from frame, returns student_id or None"""
+        """Scan QR code from frame with preprocessing for poor exposure conditions"""
         try:
-            # Suppress ZBar warnings during decode
-            # Limit to QR codes only to avoid databar decoder warnings
+            # Preprocess frame for better QR detection after camera standby
+            # This handles auto-exposure lock issues during prolonged idle
+            
+            # Convert to grayscale
+            if len(frame.shape) == 3:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = frame
+            
+            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+            # Improves contrast in poorly exposed images
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(gray)
+            
+            # Try scanning on enhanced frame first (best for poor exposure)
             with SuppressStderr():
-                decoded_objects = pyzbar.decode(frame, symbols=[pyzbar.ZBarSymbol.QRCODE])
-
+                decoded_objects = pyzbar.decode(enhanced, symbols=[pyzbar.ZBarSymbol.QRCODE])
+            
             if decoded_objects:
                 qr_data = decoded_objects[0].data.decode("utf-8")
-                logger.info(f"QR code detected: {qr_data}")
+                logger.info(f"✅ QR code detected: {qr_data}")
                 return qr_data
-
+            
+            # Fallback: Try adaptive thresholding for extreme cases
+            adaptive = cv2.adaptiveThreshold(
+                enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            
+            with SuppressStderr():
+                decoded_objects = pyzbar.decode(adaptive, symbols=[pyzbar.ZBarSymbol.QRCODE])
+            
+            if decoded_objects:
+                qr_data = decoded_objects[0].data.decode("utf-8")
+                logger.info(f"✅ QR code detected (adaptive): {qr_data}")
+                return qr_data
+            
             return None
         except Exception as e:
-            logger.error(f"Error scanning QR code: {str(e)}")
+            logger.error(f"❌ Error scanning QR code: {str(e)}")
             return None
 
     def capture_face_photo(self, frame, student_id: str, face_box=None) -> str:
@@ -732,6 +758,10 @@ class IoTAttendanceSystem:
                         student_id = self.scan_qr_code(frame)
 
                     if student_id:
+                        # Flush buffer to clear stale frames and allow AE to adapt
+                        # This prevents exposure lock issues after prolonged standby
+                        logger.debug("🔄 Flushing camera buffer for fresh frames...")
+                        self.camera.flush_buffer(num_frames=8)
                         # Check if student is in today's roster (from Supabase cache)
                         if self.roster_sync.enabled:
                             student = self.roster_sync.get_cached_student(student_id)
@@ -1211,8 +1241,22 @@ class IoTAttendanceSystem:
                                         )
                                     else:
                                         time.sleep(1.5)
+                                    
+                                    # Return to standby for next student
+                                    print(f"{'='*70}\n")
+                                    print(f"🟢 STANDBY - Waiting for QR code scan...\n")
+                                    self.state = "STANDBY"
+                                    current_student_id = None
+                                    self.auto_capture.reset()
                                 else:
                                     print(f"   ❌ Failed to upload to database")
+                                    
+                                    # Return to standby even on failure
+                                    print(f"{'='*70}\n")
+                                    print(f"🟢 STANDBY - Waiting for QR code scan...\n")
+                                    self.state = "STANDBY"
+                                    current_student_id = None
+                                    self.auto_capture.reset()
                         else:
                             # Should not happen - state machine said capture but no frame
                             self.buzzer.beep("error")
