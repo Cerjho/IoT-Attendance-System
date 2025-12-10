@@ -204,6 +204,21 @@ class SMSNotifier:
             "unsubscribe_text", "\n\nReply STOP to unsubscribe"
         )
 
+        # Webhook fallback configuration (for retry when SMS gateway has no signal)
+        self.webhook_config = config.get("webhook", {})
+        self.webhook_enabled = self.webhook_config.get("enabled", False)
+        self.webhook_url = self.webhook_config.get("url", "")
+        self.webhook_auth = self.webhook_config.get("auth_header", "")
+        self.webhook_timeout = self.webhook_config.get("timeout", 10)
+        self.webhook_on_failure_only = self.webhook_config.get("on_failure_only", True)
+        
+        if self.webhook_enabled:
+            if not self.webhook_url:
+                logger.warning("Webhook enabled but no URL configured, disabling webhook")
+                self.webhook_enabled = False
+            else:
+                logger.info(f"Webhook fallback enabled: {self.webhook_url} (on_failure_only={self.webhook_on_failure_only})")
+
         # Validate configuration
         if self.enabled:
             if not all([self.username, self.password, self.device_id]):
@@ -663,9 +678,91 @@ class SMSNotifier:
                         pass
 
             logger.error(f"❌ SMS Failed: to={phone_number}, all {attempts} attempts exhausted, last_error='{last_err}'")
+            
+            # Try webhook fallback if enabled and configured for failure retry
+            if self.webhook_enabled and self.webhook_on_failure_only:
+                logger.info(f"📡 SMS failed, attempting webhook fallback for {phone_number}")
+                return self._send_via_webhook(formatted_phone, message, phone_number)
+            
             return False
         except Exception as e:
             logger.error(f"Error sending SMS: {str(e)}")
+            
+            # Try webhook fallback on exception
+            if self.webhook_enabled and self.webhook_on_failure_only:
+                try:
+                    formatted_phone = format_phone_number(phone_number)
+                    logger.info(f"📡 SMS exception, attempting webhook fallback for {phone_number}")
+                    return self._send_via_webhook(formatted_phone, message, phone_number)
+                except Exception:
+                    pass
+            
+            return False
+
+    def _send_via_webhook(
+        self,
+        phone_number: str,
+        message: str,
+        original_phone: str = None,
+    ) -> bool:
+        """
+        Send SMS via webhook fallback (e.g., when local gateway has no signal)
+        
+        Args:
+            phone_number: Formatted phone number (+63 format)
+            message: SMS message content
+            original_phone: Original unformatted phone number (for logging)
+            
+        Returns:
+            bool: True if webhook sent successfully
+        """
+        if not self.webhook_enabled:
+            return False
+            
+        try:
+            payload = {
+                "type": "sms_retry",
+                "phone": phone_number,
+                "message": message,
+                "timestamp": datetime.now().isoformat(),
+                "device_id": self.device_id,
+                "reason": "local_gateway_failed"
+            }
+            
+            headers = {"Content-Type": "application/json"}
+            if self.webhook_auth:
+                headers["Authorization"] = self.webhook_auth
+            
+            logger.debug(f"Sending webhook to {self.webhook_url}")
+            
+            response = requests.post(
+                self.webhook_url,
+                json=payload,
+                headers=headers,
+                timeout=self.webhook_timeout,
+            )
+            
+            if response.status_code in [200, 201, 202, 204]:
+                logger.info(
+                    f"✅ Webhook sent successfully: to={original_phone or phone_number}, "
+                    f"status={response.status_code}"
+                )
+                return True
+            else:
+                logger.warning(
+                    f"⚠️ Webhook failed: status={response.status_code}, "
+                    f"response={response.text[:200]}"
+                )
+                return False
+                
+        except requests.exceptions.Timeout:
+            logger.warning(f"⚠️ Webhook timeout after {self.webhook_timeout}s")
+            return False
+        except requests.exceptions.ConnectionError as e:
+            logger.warning(f"⚠️ Webhook connection error: {str(e)[:100]}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Webhook error: {str(e)}")
             return False
 
     def send_no_checkout_alert(
