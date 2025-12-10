@@ -65,13 +65,6 @@ from src.sync.roster_sync import RosterSyncManager
 from src.sync.schedule_sync import ScheduleSync
 from src.utils import load_config, setup_logger
 
-from src.utils.watchdog import WatchdogTimer
-from src.notifications.sms_webhook_receiver import SMSWebhookReceiver
-from src.utils.database_backup import DatabaseBackupManager
-from src.utils.health_endpoint import HealthEndpoint
-from src.utils.metrics_collector import MetricsCollector
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -201,68 +194,6 @@ class IoTAttendanceSystem:
         # Initialize schedule validator
         self.schedule_validator = ScheduleValidator(self.database.db_path)
         logger.info("Schedule validator initialized")
-
-        # Phase 3 Robustness Components
-        
-        # Initialize watchdog timer
-        watchdog_config = self.config.get("watchdog", {})
-        self.watchdog = WatchdogTimer(
-            timeout=watchdog_config.get("timeout_seconds", 30),
-            restart_command=watchdog_config.get("restart_command", "sudo systemctl restart attendance-system"),
-            log_file=watchdog_config.get("log_file", "data/logs/watchdog_restarts.log"),
-            enabled=watchdog_config.get("enabled", True)
-        )
-        if self.watchdog.enabled:
-            self.watchdog.start()
-            logger.info("Watchdog timer started")
-        
-        # Initialize SMS webhook receiver
-        webhook_config = self.config.get("sms_webhook", {})
-        self.sms_webhook = SMSWebhookReceiver(
-            port=webhook_config.get("port", 8081),
-            host=webhook_config.get("host", "0.0.0.0"),
-            db_path=self.database.db_path,
-            enabled=webhook_config.get("enabled", True),
-            auth_token=webhook_config.get("auth_token", "")
-        )
-        if self.sms_webhook.enabled:
-            self.sms_webhook.start()
-            logger.info("SMS webhook receiver started")
-        
-        # Initialize database backup manager
-        backup_config = self.config.get("database_backup", {})
-        self.backup_manager = DatabaseBackupManager(
-            db_path=self.database.db_path,
-            backup_dir=backup_config.get("backup_dir", "data/backups"),
-            backup_interval=backup_config.get("backup_interval_seconds", 3600),
-            keep_backups=backup_config.get("keep_backups", 24),
-            enabled=backup_config.get("enabled", True)
-        )
-        if self.backup_manager.enabled:
-            self.backup_manager.start()
-            logger.info("Database backup manager started")
-        
-        # Initialize health endpoint
-        health_config = self.config.get("health_endpoint", {})
-        self.health_endpoint = HealthEndpoint(
-            port=health_config.get("port", 8080),
-            host=health_config.get("host", "0.0.0.0"),
-            enabled=health_config.get("enabled", True),
-            db_path=self.database.db_path
-        )
-        if self.health_endpoint.enabled:
-            self.health_endpoint.start()
-            logger.info("Health endpoint started")
-        
-        # Initialize metrics collector
-        self.metrics = MetricsCollector(
-            export_path="data/metrics.json",
-            export_interval=300,  # 5 minutes
-            enabled=True
-        )
-        self.metrics.start()
-        logger.info("Metrics collector started")
-
 
         # Auto-sync roster on startup
         if self.roster_sync.enabled:

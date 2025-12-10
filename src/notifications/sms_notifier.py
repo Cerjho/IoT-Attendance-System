@@ -197,13 +197,6 @@ class SMSNotifier:
         # Duplicate SMS prevention
         self.cooldown_minutes = config.get("duplicate_sms_cooldown_minutes", 5)
         self.recent_notifications = {}  # Track recent SMS to prevent duplicates
-        
-        # Rate limiting
-        rate_limiting = config.get("rate_limiting", {})
-        self.rate_limiting_enabled = rate_limiting.get("enabled", True)
-        self.max_per_minute = rate_limiting.get("max_per_minute", 10)
-        self.max_per_hour = rate_limiting.get("max_per_hour", 60)
-        self.sms_timestamps = []  # Track timestamps for rate limiting
 
         # Unsubscribe text
         self.include_unsubscribe = config.get("include_unsubscribe", True)
@@ -268,41 +261,6 @@ class SMSNotifier:
 
         # Update last sent time
         self.recent_notifications[key] = self.time_provider.now()
-        return True
-    
-    def _check_rate_limit(self) -> bool:
-        """
-        Check if rate limit has been exceeded
-        
-        Returns:
-            bool: True if within rate limit, False if limit exceeded
-        """
-        if not self.rate_limiting_enabled:
-            return True
-        
-        now = self.time_provider.now()
-        
-        # Remove timestamps older than 1 hour
-        self.sms_timestamps = [
-            ts for ts in self.sms_timestamps 
-            if (now - ts).total_seconds() < 3600
-        ]
-        
-        # Count recent SMS
-        minute_ago = [(now - ts).total_seconds() < 60 for ts in self.sms_timestamps].count(True)
-        hour_ago = len(self.sms_timestamps)
-        
-        # Check limits
-        if minute_ago >= self.max_per_minute:
-            logger.warning(f"Rate limit exceeded: {minute_ago}/{self.max_per_minute} per minute")
-            return False
-        
-        if hour_ago >= self.max_per_hour:
-            logger.warning(f"Rate limit exceeded: {hour_ago}/{self.max_per_hour} per hour")
-            return False
-        
-        # Record this attempt
-        self.sms_timestamps.append(now)
         return True
     
     def _generate_attendance_link(self, student_identifier: str) -> str:
@@ -622,11 +580,6 @@ class SMSNotifier:
             bool: True if sent successfully, False otherwise
         """
         if not self.enabled:
-            return False
-        
-        # Check rate limit
-        if not self._check_rate_limit():
-            logger.warning(f"SMS rate limit exceeded, message to {phone_number} dropped")
             return False
 
         try:

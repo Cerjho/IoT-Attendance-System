@@ -250,37 +250,6 @@
     },
     "duplicate_sms_cooldown_minutes": 5,
     "retry_on_failure": true,
-    "retry_attempts": 3,
-    "rate_limiting": {
-      "enabled": true,
-      "max_per_minute": 10,
-      "max_per_hour": 60
-    }
-  },
-  "watchdog": {
-    "enabled": true,
-    "timeout_seconds": 30,
-    "restart_command": "sudo systemctl restart attendance-system",
-    "log_file": "data/logs/watchdog_restarts.log"
-  },
-  "sms_webhook": {
-    "enabled": true,
-    "port": 8081,
-    "host": "0.0.0.0",
-    "auth_token": "",
-    "log_deliveries": true,
-    "retry_failed": false
-  },
-  "database_backup": {
-    "enabled": true,
-    "backup_dir": "data/backups",
-    "backup_interval_seconds": 3600,
-    "keep_backups": 24,
-    "check_integrity": true
-  },
-  "health_endpoint": {
-    "enabled": true,
-    "port": 8080,
-    "host": "0.0.0.0"
+    "retry_attempts": 3
   }
 }
