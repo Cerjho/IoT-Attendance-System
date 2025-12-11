@@ -132,3 +132,12 @@ temp_*
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# Backups (should never be committed)
+backups/backup_*/
+backups/*.sql
+backups/*.db
+backups/*.dump
+data/backups/
+*.backup
+*.bak
