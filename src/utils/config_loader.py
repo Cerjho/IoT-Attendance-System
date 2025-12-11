@@ -4,11 +4,15 @@ Loads and manages application configuration
 """
 
 import json
-import logging
 import os
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_exceptions
+from src.utils.audit_logger import get_audit_logger
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
 
 
 class ConfigLoader:

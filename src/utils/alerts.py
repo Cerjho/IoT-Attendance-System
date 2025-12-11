@@ -6,14 +6,18 @@ Sends alerts for critical system events via multiple channels
 """
 
 import json
-import logging
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+from src.utils.audit_logger import get_business_logger
+
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 
 class AlertSeverity(Enum):
@@ -232,6 +236,12 @@ class WebhookAlertChannel(AlertChannel):
             return False
 
         try:
+            business_logger.log_event(
+                "alert_webhook_send",
+                alert_type=alert.alert_type.value,
+                severity=alert.severity.value,
+                component=alert.component
+            )
             import requests
             from src.utils.network_timeouts import NetworkTimeouts
 

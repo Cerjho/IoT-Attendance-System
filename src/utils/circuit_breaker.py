@@ -2,12 +2,16 @@
 Circuit Breaker Pattern
 Prevents cascading failures by stopping repeated calls to failing endpoints
 """
-import logging
 import time
 from enum import Enum
 from typing import Callable, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_audit_logger, get_business_logger
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
+business_logger = get_business_logger()
 
 
 class CircuitState(Enum):
@@ -126,6 +130,24 @@ class CircuitBreaker:
         logger.error(
             f"Circuit '{self.name}' OPEN (failed {self.failure_count}/{self.failure_threshold} times)"
         )
+        
+        # Audit log circuit breaker opening
+        audit_logger.system_event(
+            f"Circuit breaker opened - service degraded",
+            component=self.name,
+            failure_count=self.failure_count,
+            threshold=self.failure_threshold,
+            status="OPEN"
+        )
+        
+        # Track error rate
+        business_logger.log_error_rate(
+            component=self.name,
+            error_count=self.failure_count,
+            total_count=self.failure_count,
+            period="recent"
+        )
+        
         self.state = CircuitState.OPEN
         self.last_state_change = time.time()
 
@@ -134,6 +156,15 @@ class CircuitBreaker:
         logger.info(
             f"Circuit '{self.name}' CLOSED (recovered after {self.success_count} successes)"
         )
+        
+        # Audit log circuit breaker recovery
+        audit_logger.system_event(
+            f"Circuit breaker closed - service recovered",
+            component=self.name,
+            success_count=self.success_count,
+            status="CLOSED"
+        )
+        
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.success_count = 0

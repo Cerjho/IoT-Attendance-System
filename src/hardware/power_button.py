@@ -7,12 +7,15 @@ GPIO 17: Monitored by app for shutdown (safe/force)
 GPIO 3: Wake-from-halt only (gpio-poweroff overlay)
 """
 
-import logging
 import os
 import threading
 import time
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_audit_logger
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
 
 
 class PowerButtonController:
@@ -191,9 +194,20 @@ class PowerButtonController:
         try:
             if force:
                 logger.warning("🔴 FORCE SHUTDOWN - Immediate halt!")
+                audit_logger.system_event(
+                    "Force shutdown initiated via power button",
+                    component="power_button",
+                    severity="HIGH",
+                    shutdown_type="force"
+                )
                 os.system("sudo shutdown -h now")
             else:
                 logger.info("🔵 SAFE SHUTDOWN - Closing applications...")
+                audit_logger.system_event(
+                    "Safe shutdown initiated via power button",
+                    component="power_button",
+                    shutdown_type="safe"
+                )
                 # Give time for cleanup
                 time.sleep(1)
                 os.system("sudo shutdown -h now")

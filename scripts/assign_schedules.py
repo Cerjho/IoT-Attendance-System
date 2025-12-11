@@ -17,7 +17,12 @@ from typing import List, Dict, Optional
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_audit_logger
 from dotenv import load_dotenv
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
 
 # Load environment variables
 load_dotenv()

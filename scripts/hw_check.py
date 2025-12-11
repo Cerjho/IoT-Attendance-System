@@ -11,14 +11,16 @@ import time
 
 sys.path.insert(0, os.path.dirname(__file__) + '/..')
 
-from src.utils import load_config, setup_logger
+from src.utils.logging_factory import get_logger
+from src.utils import load_config
 from src.hardware import BuzzerController
 from src.hardware.rgb_led_controller import RGBLEDController
 from src.hardware.power_button import PowerButtonController
 
+logger = get_logger(__name__)
+
 
 def main():
-    setup_logger("hw_check")
     cfg = load_config("config/config.json").get_all()
 
     # Buzzer

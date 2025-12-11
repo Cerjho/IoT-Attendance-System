@@ -8,11 +8,13 @@ import logging
 import os
 import sqlite3
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import requests
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class ScheduleSync:

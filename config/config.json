@@ -50,7 +50,50 @@
   },
   "logging": {
     "level": "INFO",
-    "log_dir": "data/logs"
+    "log_dir": "data/logs",
+    "outputs": {
+      "file": {
+        "enabled": true,
+        "level": "DEBUG",
+        "rotation": {
+          "max_size_mb": 100,
+          "backup_count": 10
+        }
+      },
+      "json_file": {
+        "enabled": true,
+        "level": "DEBUG"
+      },
+      "console": {
+        "enabled": false,
+        "level": "INFO",
+        "colored": true
+      },
+      "syslog": {
+        "enabled": true,
+        "level": "INFO",
+        "address": "/dev/log",
+        "facility": "LOCAL0"
+      }
+    },
+    "performance": {
+      "log_slow_operations": true,
+      "slow_threshold_ms": 1000,
+      "log_timing": true
+    },
+    "audit": {
+      "enabled": true,
+      "level": "INFO",
+      "log_security_events": true,
+      "log_data_changes": true,
+      "log_access_events": true
+    },
+    "business_metrics": {
+      "enabled": true,
+      "level": "INFO",
+      "log_attendance_events": true,
+      "log_performance_metrics": true
+    }
   },
   "schedule_validation": {
     "enabled": true,

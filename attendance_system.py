@@ -11,10 +11,12 @@ Flow:
 5. Return to Standby - Wait for next student
 """
 import ctypes
+import json
 import logging
 import os
 import sys
 import time
+import uuid
 import warnings
 from datetime import datetime
 
@@ -63,9 +65,14 @@ from src.network import ConnectivityMonitor
 from src.notifications import SMSNotifier
 from src.sync.roster_sync import RosterSyncManager
 from src.sync.schedule_sync import ScheduleSync
-from src.utils import load_config, setup_logger
+from src.utils import load_config
+from src.utils.logging_factory import LoggingFactory, get_logger
+from src.utils.log_decorators import log_execution_time, log_with_context, log_exceptions
+from src.utils.audit_logger import get_audit_logger, get_business_logger
+from src.utils.structured_logging import set_correlation_id
+import uuid
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IoTAttendanceSystem:
@@ -105,6 +112,16 @@ class IoTAttendanceSystem:
         os.makedirs("data/photos", exist_ok=True)
         os.makedirs("data/logs", exist_ok=True)
         os.makedirs("data", exist_ok=True)
+
+        # Initialize specialized loggers
+        log_dir = self.config.get("logging", {}).get("log_dir", "data/logs")
+        self.audit_logger = get_audit_logger(log_dir)
+        self.business_logger = get_business_logger(log_dir)
+        
+        logger.info("Attendance system initializing", extra={
+            "config_file": config_file,
+            "device_id": self.config.get("device_id", "unknown")
+        })
 
         # Initialize components
         self.camera = None
@@ -415,6 +432,7 @@ class IoTAttendanceSystem:
             logger.error(f"❌ Error scanning QR code: {str(e)}")
             return None
 
+    @log_execution_time(slow_threshold_ms=500.0)
     def capture_face_photo(self, frame, student_id: str, face_box=None) -> str:
         """
         Capture and save face photo with lighting compensation
@@ -574,6 +592,7 @@ class IoTAttendanceSystem:
             logger.error(f"Error saving photo: {str(e)}")
             return None
 
+    @log_execution_time(slow_threshold_ms=2000.0)
     def upload_to_database(
         self,
         student_id: str,
@@ -584,6 +603,12 @@ class IoTAttendanceSystem:
         schedule_session: str = None,
     ) -> bool:
         """Upload attendance record to database and sync to cloud"""
+        # Set correlation ID for tracking this attendance record
+        correlation_id = f"att-{student_id}-{int(time.time())}"
+        set_correlation_id(correlation_id)
+        
+        start_time = time.perf_counter()
+        
         try:
             # Ensure student exists in database
             student = self.database.get_student(student_id)
@@ -591,6 +616,15 @@ class IoTAttendanceSystem:
                 # Add student with ID only
                 self.database.add_student(student_id, name=None, email=None)
                 logger.info(f"New student registered: {student_id}")
+                
+                # Log data change for audit
+                self.audit_logger.data_change(
+                    entity_type="student",
+                    entity_id=student_id,
+                    action="CREATE",
+                    after={"student_id": student_id},
+                    device_id=self.config.get("device_id", "unknown")
+                )
 
             # Record attendance locally with schedule session tracking
             # Note: Duplicate check is done earlier in QR scan validation
@@ -600,7 +634,32 @@ class IoTAttendanceSystem:
             )
 
             if record_id:
+                processing_time_ms = (time.perf_counter() - start_time) * 1000
+                
                 logger.info(f"✅ Attendance uploaded to database (Record ID: {record_id})")
+                
+                # Log to audit trail
+                self.audit_logger.access_event(
+                    action=scan_type.upper(),
+                    resource="attendance_system",
+                    status="success",
+                    student_id=student_id,
+                    record_id=record_id,
+                    device_id=self.config.get("device_id", "unknown"),
+                    session=schedule_session
+                )
+                
+                # Log business metrics
+                self.business_logger.log_event(
+                    "student_attendance",
+                    student_id=student_id,
+                    record_id=record_id,
+                    scan_type=scan_type,
+                    status=status,
+                    session=schedule_session,
+                    processing_time_ms=round(processing_time_ms, 2),
+                    device_id=self.config.get("device_id", "unknown")
+                )
                 
                 # IMMEDIATE FEEDBACK - Success beep and LED before cloud operations
                 self.buzzer.beep("success")
@@ -772,6 +831,16 @@ class IoTAttendanceSystem:
                                 logger.warning(
                                     f"Student {student_id} not found in roster cache"
                                 )
+                                
+                                # Log security event
+                                self.audit_logger.security_event(
+                                    f"Unauthorized access attempt - student not in roster",
+                                    threat_level="LOW",
+                                    student_id=student_id,
+                                    reason="not_in_roster",
+                                    device_id=self.config.get("device_id", "unknown")
+                                )
+                                
                                 self.buzzer.beep("error")
                                 self.rgb_led.show_color(
                                     "error", fade=True, blocking=False
@@ -1603,9 +1672,27 @@ class IoTAttendanceSystem:
 
 
 if __name__ == "__main__":
-    # Setup logger
-    setup_logger(name="iot_attendance_system")
-
+    # Load configuration first
+    config = load_config("config/config.json")
+    
+    # Configure professional logging system
+    environment = os.getenv("ENVIRONMENT", "production")
+    LoggingFactory.configure(config.get("logging", {}), environment=environment)
+    
+    # Get loggers
+    logger = get_logger(__name__)
+    audit_logger = get_audit_logger(config.get("logging", {}).get("log_dir", "data/logs"))
+    business_logger = get_business_logger(config.get("logging", {}).get("log_dir", "data/logs"))
+    
+    # Log system startup
+    set_correlation_id(f"startup-{uuid.uuid4().hex[:8]}")
+    audit_logger.system_event(
+        "Attendance system starting",
+        component="attendance_system",
+        version="2.0.0",
+        environment=environment
+    )
+    
     # Initialize system
     system = IoTAttendanceSystem(config_file="config/config.json")
 

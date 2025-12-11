@@ -4,15 +4,17 @@ Manages offline queue for cloud synchronization
 """
 
 import json
-import logging
 import sqlite3
 import threading
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time, log_exceptions
+from src.utils.structured_logging import set_correlation_id
 from src.utils.queue_validator import QueueDataValidator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SyncQueueManager:
@@ -91,6 +93,7 @@ class SyncQueueManager:
         conn.close()
         logger.info("Sync tables initialized")
 
+    @log_execution_time(slow_threshold_ms=100.0)
     def add_to_queue(
         self, record_type: str, record_id: int, data: Dict, priority: int = 0
     ) -> bool:
@@ -106,6 +109,9 @@ class SyncQueueManager:
         Returns:
             True if successful
         """
+        # Set correlation ID for tracking this queue item
+        set_correlation_id(f"queue-{record_type}-{record_id}")
+        
         try:
             # Validate data before adding to queue
             if record_type == "attendance":

@@ -9,7 +9,9 @@ from datetime import datetime, time, timedelta
 from enum import Enum
 from typing import Dict, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class SessionType(Enum):

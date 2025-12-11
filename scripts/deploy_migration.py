@@ -9,9 +9,18 @@ import sys
 import requests
 from pathlib import Path
 
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_audit_logger
+
 # Load environment
 from dotenv import load_dotenv
 load_dotenv()
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')

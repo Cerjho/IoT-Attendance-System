@@ -3,12 +3,14 @@ Database Transaction Wrappers
 Provides transaction safety for multi-step database operations
 """
 import functools
-import logging
 import sqlite3
 from contextlib import contextmanager
 from typing import Any, Callable, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_with_context, log_execution_time
+
+logger = get_logger(__name__)
 
 
 @contextmanager

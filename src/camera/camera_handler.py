@@ -11,6 +11,10 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 
+# Import new logging utilities
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+
 # Try to import picamera2 for Bookworm support
 try:
     from picamera2 import Picamera2
@@ -19,7 +23,7 @@ try:
 except ImportError:
     PICAMERA2_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CameraHandler:

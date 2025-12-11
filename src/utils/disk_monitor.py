@@ -2,14 +2,18 @@
 Disk Space Monitor
 Provides disk space checks and automatic cleanup for photos and logs
 """
-import logging
 import os
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+from src.utils.audit_logger import get_business_logger
+
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 
 class DiskMonitor:
@@ -63,6 +67,7 @@ class DiskMonitor:
             # Return safe defaults assuming no space issue
             return {"total": 0, "used": 0, "free": 0, "free_percent": 100}
 
+    @log_execution_time(slow_threshold_ms=50.0)
     def check_space_available(self, required_mb: float = 10) -> bool:
         """
         Check if sufficient disk space is available
@@ -75,22 +80,33 @@ class DiskMonitor:
         """
         usage = self.get_disk_usage()
         free_percent = usage["free_percent"]
+        free_mb = usage["free"] / (1024 * 1024)
+
+        # Log disk metrics
+        business_logger.log_event(
+            "disk_space_check",
+            free_percent=round(free_percent, 1),
+            free_mb=round(free_mb, 1),
+            required_mb=required_mb
+        )
 
         if free_percent < self.critical_threshold:
             logger.error(
-                f"Critical disk space: {free_percent:.1f}% free (threshold {self.critical_threshold}%)"
+                f"Critical disk space: {free_percent:.1f}% free (threshold {self.critical_threshold}%)",
+                extra={"free_percent": free_percent, "threshold": self.critical_threshold}
             )
             return False
 
         if free_percent < self.warn_threshold:
             logger.warning(
-                f"Low disk space: {free_percent:.1f}% free (threshold {self.warn_threshold}%)"
+                f"Low disk space: {free_percent:.1f}% free (threshold {self.warn_threshold}%)",
+                extra={"free_percent": free_percent, "threshold": self.warn_threshold}
             )
 
-        free_mb = usage["free"] / (1024 * 1024)
         if free_mb < required_mb:
             logger.warning(
-                f"Insufficient space: {free_mb:.1f}MB free, need {required_mb}MB"
+                f"Insufficient space: {free_mb:.1f}MB free, need {required_mb}MB",
+                extra={"free_mb": free_mb, "required_mb": required_mb}
             )
             return False
 

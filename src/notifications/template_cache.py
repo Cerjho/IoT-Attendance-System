@@ -8,14 +8,18 @@ Provides local caching of SMS templates from Supabase with:
 - SQLite-based persistence
 """
 
-import logging
 import sqlite3
 import json
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+from src.utils.audit_logger import get_business_logger
+
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 
 class TemplateCache:

@@ -8,7 +8,9 @@ import threading
 import time
 from typing import Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class BuzzerController:

@@ -3,10 +3,11 @@ Queue Data Validation
 Validates sync queue data using JSON schema
 """
 import json
-import logging
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class QueueDataValidator:

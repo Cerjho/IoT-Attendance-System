@@ -6,14 +6,18 @@ and state persistence. Handles SIGTERM and SIGINT signals.
 """
 
 import atexit
-import logging
 import signal
 import sys
 import threading
 import time
 from typing import Callable, List, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+from src.utils.audit_logger import get_audit_logger
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
 
 
 class ShutdownHandler:
@@ -78,6 +82,11 @@ class ShutdownHandler:
         """
         signal_name = signal.Signals(signum).name
         logger.info(f"Received signal {signal_name}, initiating graceful shutdown")
+        audit_logger.system_event(
+            f"System shutdown initiated by signal {signal_name}",
+            component="shutdown_handler",
+            signal=signal_name
+        )
         self.shutdown()
 
     def shutdown(self) -> None:
@@ -94,6 +103,12 @@ class ShutdownHandler:
             self.shutdown_in_progress = True
 
         logger.info("Starting graceful shutdown")
+        audit_logger.system_event(
+            "Graceful shutdown started",
+            component="shutdown_handler",
+            callback_count=len(self.shutdown_callbacks),
+            timeout=self.timeout
+        )
         self.shutdown_event.set()
 
         start_time = time.time()

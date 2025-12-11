@@ -2,8 +2,18 @@
 """Daily backup script for attendance system"""
 import shutil
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_business_logger
+
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 backup_dir = Path("backups")
 backup_dir.mkdir(exist_ok=True)

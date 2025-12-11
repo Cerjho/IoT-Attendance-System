@@ -11,8 +11,10 @@ from typing import Optional
 import requests
 
 from src.utils.network_timeouts import NetworkTimeouts, DEFAULT_TIMEOUTS
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PhotoUploader:

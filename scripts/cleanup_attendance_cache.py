@@ -8,7 +8,6 @@ Clears synced attendance records from local cache while preserving:
 
 Designed to run at 11:59 PM daily via cron.
 """
-import logging
 import os
 import sqlite3
 import sys
@@ -19,9 +18,11 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.utils.logger_config import setup_logger
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_business_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 
 def cleanup_synced_attendance(db_path: str = "data/attendance.db", keep_days: int = 0):

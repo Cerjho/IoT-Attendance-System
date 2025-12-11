@@ -5,14 +5,18 @@ Provides metrics export for monitoring system health, performance,
 and operational statistics.
 """
 
-import logging
 import time
 from collections import defaultdict
 from datetime import datetime
 from threading import Lock
 from typing import Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+from src.utils.audit_logger import get_business_logger
+
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 
 class MetricType:

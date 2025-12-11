@@ -5,7 +5,6 @@ Monitors system health and sends alerts if issues detected
 """
 
 import json
-import logging
 import os
 import sqlite3
 import sys
@@ -16,13 +15,11 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.utils.config_loader import ConfigLoader
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_business_logger
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+business_logger = get_business_logger()
 
 
 class ProductionMonitor:

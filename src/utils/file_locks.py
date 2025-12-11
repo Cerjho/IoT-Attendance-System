@@ -3,14 +3,16 @@ File Locking Utilities
 Provides file locking for concurrent access safety
 """
 import fcntl
-import logging
 import os
 import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.log_decorators import log_execution_time
+
+logger = get_logger(__name__)
 
 
 class FileLock:

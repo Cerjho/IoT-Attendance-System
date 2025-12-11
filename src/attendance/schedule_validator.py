@@ -5,13 +5,17 @@ Validates student attendance scans against their assigned schedules
 Prevents students from scanning during wrong sessions (e.g., afternoon student scanning in morning)
 """
 
-import logging
 import sqlite3
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+from src.utils.audit_logger import get_audit_logger, get_business_logger
+
+logger = get_logger(__name__)
+audit_logger = get_audit_logger()
+business_logger = get_business_logger()
 
 
 class ValidationResult(Enum):
@@ -122,6 +126,26 @@ class ScheduleValidator:
                     f"❌ SCHEDULE VIOLATION: Student {student_id} ({student_name}) "
                     f"assigned to {session_name} class tried to scan during {current_session.upper()} session"
                 )
+                
+                # Audit log schedule violation
+                audit_logger.security_event(
+                    "Schedule violation - wrong session scan attempt",
+                    threat_level="LOW",
+                    student_id=student_id,
+                    student_name=student_name,
+                    allowed_session=allowed_session,
+                    attempted_session=current_session
+                )
+                
+                # Track violation metrics
+                business_logger.log_event(
+                    "schedule_violation",
+                    student_id=student_id,
+                    allowed_session=allowed_session,
+                    attempted_session=current_session,
+                    violation_type="wrong_session"
+                )
+                
                 return (
                     ValidationResult.WRONG_SESSION,
                     {

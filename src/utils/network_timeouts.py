@@ -2,10 +2,11 @@
 Network Timeout Configuration
 Provides configurable timeouts for all network operations
 """
-import logging
 from typing import Dict, Optional, Tuple
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class NetworkTimeouts:

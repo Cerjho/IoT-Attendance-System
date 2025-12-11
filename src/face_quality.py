@@ -10,7 +10,9 @@ from typing import Dict, Optional, Tuple
 import cv2
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from src.utils.logging_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class FaceQualityChecker:
